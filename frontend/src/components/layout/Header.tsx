@@ -29,13 +29,13 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-3 sm:px-4">
         <Link href="/dashboard" className="flex items-center gap-2 shrink-0" aria-label="Tapestry Home">
           <Image
-            src="/vercel.svg"
+            src="/logo.png"
             alt="Tapestry"
-            width={28}
-            height={28}
+            width={60}
+            height={60}
             className="dark:invert"
           />
-          <span className="font-semibold tracking-tight">Tapestry</span>
+          {/* <span className="font-semibold tracking-tight">Tapestry</span> */}
         </Link>
 
         <Separator orientation="vertical" className="mx-1 hidden h-6 sm:block" />

@@ -16,9 +16,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, MapPin } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, MapPin, Trash2, Save } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type EventItem = {
   id: string;
@@ -57,7 +59,7 @@ function addDays(date: Date, days: number) {
 
 export default function DashboardPage() {
   const [anchor, setAnchor] = useState(getWeekStart(new Date()));
-  const [view, setView] = useState<"week" | "day">("week"); // calendar view state
+  const [view, setView] = useState<"week" | "day" | "month">("week"); // calendar view state
 
   // New Event dialog state
   const [openDialog, setOpenDialog] = useState(false);
@@ -77,6 +79,45 @@ export default function DashboardPage() {
     [weekStart]
   );
 
+  // Month view helpers
+  const monthStart = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [weekStart]);
+
+  function getMonthGrid(startDate: Date) {
+    const firstOfMonth = new Date(startDate);
+    firstOfMonth.setDate(1);
+    firstOfMonth.setHours(0, 0, 0, 0);
+
+    const startDay = firstOfMonth.getDay(); // 0..6
+    const gridStart = new Date(firstOfMonth);
+    gridStart.setDate(firstOfMonth.getDate() - startDay); // back to Sunday before/at 1st
+
+    const cells = Array.from({ length: 42 }, (_, i) => {
+      const d = addDays(gridStart, i);
+      const inCurrentMonth = d.getMonth() === firstOfMonth.getMonth();
+      return { date: d, inCurrentMonth };
+    });
+
+    return { firstOfMonth, gridStart, cells };
+  }
+
+  const monthGrid = useMemo(() => getMonthGrid(monthStart), [monthStart]);
+
+  function nextMonth(d: Date) {
+    const nd = new Date(d);
+    nd.setMonth(nd.getMonth() + 1);
+    return getWeekStart(nd); // keep anchor aligned to week start after month shift
+  }
+  function prevMonth(d: Date) {
+    const nd = new Date(d);
+    nd.setMonth(nd.getMonth() - 1);
+    return getWeekStart(nd);
+  }
+
   const selectedDay = useMemo(() => {
     // default selected day is "today" if within the current anchor week, otherwise weekStart
     const today = new Date();
@@ -91,20 +132,25 @@ export default function DashboardPage() {
   const [eventList, setEventList] = useState<EventItem[]>([]);
   const events: EventItem[] = useMemo(
     () => {
-      const make = (dayOffset: number, sh: number, sm: number, eh: number, em: number) => {
-        const s = addDays(weekStart, dayOffset);
+      // Use absolute dates (relative to today) so navigating weeks doesn't drag demo events along.
+      const today = new Date();
+      const thisWeekStart = getWeekStart(today);
+
+      const makeAbsolute = (base: Date, dayOffset: number, sh: number, sm: number, eh: number, em: number) => {
+        const s = addDays(base, dayOffset);
         s.setHours(sh, sm, 0, 0);
-        const e = addDays(weekStart, dayOffset);
+        const e = addDays(base, dayOffset);
         e.setHours(eh, em, 0, 0);
         return { start: s, end: e };
       };
+
       return [
         {
           id: "evt-1",
           title: "Soccer Practice",
           emoji: "⚽",
           description: "Bring water",
-          ...make(2, 15, 0, 16, 30),
+          ...makeAbsolute(thisWeekStart, 2, 15, 0, 16, 30),
           participants: ["Max"],
         },
         {
@@ -112,7 +158,7 @@ export default function DashboardPage() {
           title: "Dance Practice",
           emoji: "💃",
           description: "Bring shoes",
-          ...make(2, 17, 0, 18, 0),
+          ...makeAbsolute(thisWeekStart, 2, 17, 0, 18, 0),
           participants: ["Maggie"],
         },
         {
@@ -120,9 +166,9 @@ export default function DashboardPage() {
           title: "Summer Camp",
           emoji: "🌞",
           description: "Bring Food",
-          // spans across two days; we will clamp per-day render
-          start: (() => { const d = addDays(weekStart, 1); d.setHours(9, 0, 0, 0); return d; })(),
-          end:   (() => { const d = addDays(weekStart, 2); d.setHours(12, 0, 0, 0); return d; })(),
+          // spans across two days in the current week
+          start: (() => { const d = addDays(thisWeekStart, 1); d.setHours(9, 0, 0, 0); return d; })(),
+          end:   (() => { const d = addDays(thisWeekStart, 2); d.setHours(12, 0, 0, 0); return d; })(),
           participants: ["Maggie", "Max"],
         },
         {
@@ -130,18 +176,89 @@ export default function DashboardPage() {
           title: "Dentist",
           emoji: "🦷",
           description: "Routine cleaning",
-          ...make(3, 10, 15, 11, 0),
+          ...makeAbsolute(thisWeekStart, 3, 10, 15, 11, 0),
           participants: ["Mom"],
         },
       ];
     },
-    [weekStart]
+    [] // static demo events anchored to the user's current week, not the anchor week
   );
 
   // merge demo events with user-created ones
   const mergedEvents = useMemo(() => {
     return [...eventList, ...events];
   }, [eventList, events]);
+
+  // Currently selected event for editing (by id)
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // Local edit form state
+  const [editTitle, setEditTitle] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editStart, setEditStart] = useState("");
+  const [editEnd, setEditEnd] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editParticipants, setEditParticipants] = useState("");
+
+  function openEditor(e: EventItem) {
+    setEditingId(e.id);
+    setEditTitle(e.title);
+
+    // If an event spans multiple days, use the start day of the currently
+    // rendered column when opening from week view so edits reflect that day’s slice.
+    // Fallback to the event.start date when no column context is available.
+    const currentColumnDate =
+      // Try to read a data attribute we attach on the clicked element (set below)
+      (typeof window !== "undefined" &&
+        (document.activeElement as HTMLElement | null)?.dataset?.colDate) || null
+
+    const baseDate = currentColumnDate ? new Date(currentColumnDate) : e.start;
+
+    setEditDate(format(baseDate, "yyyy-MM-dd"));
+
+    // Determine time range relative to the selected day slice:
+    // - If editing on a middle day of a multi-day event, start at 00:00 and end at 23:59 for that day.
+    // - If editing on the first/last day, clamp to the actual event boundaries.
+    const startOfDay = new Date(baseDate); startOfDay.setHours(0,0,0,0);
+    const endOfDay = new Date(baseDate); endOfDay.setHours(23,59,59,999);
+
+    const sliceStart = new Date(Math.max(e.start.getTime(), startOfDay.getTime()));
+    const sliceEnd = new Date(Math.min(e.end.getTime(), endOfDay.getTime()));
+
+    setEditStart(format(sliceStart, "HH:mm"));
+    setEditEnd(format(sliceEnd, "HH:mm"));
+    setEditLocation(e.description ?? "");
+    setEditParticipants(e.participants.join(", "));
+  }
+
+  function saveEdit() {
+    if (!editingId) return;
+    const start = new Date(editDate + "T" + editStart);
+    const end = new Date(editDate + "T" + editEnd);
+    setEventList(prev =>
+      prev.map(ev =>
+        ev.id === editingId
+          ? {
+              ...ev,
+              title: editTitle || "Untitled",
+              description: editLocation || undefined,
+              start,
+              end,
+              participants: editParticipants
+                .split(",")
+                .map(s => s.trim())
+                .filter(Boolean),
+            }
+          : ev
+      )
+    );
+    setEditingId(null);
+  }
+
+  function deleteEvent() {
+    if (!editingId) return;
+    setEventList(prev => prev.filter(e => e.id !== editingId));
+    setEditingId(null);
+  }
 
   const chores: ChoreItem[] = useMemo(
     () => [
@@ -240,7 +357,7 @@ export default function DashboardPage() {
 
     return {
       top: `${topPct * GRID_PX}px`,
-      height: `${Math.max(100, heightPct * GRID_PX)}px`, // enforce 100px minimum
+      height: `${Math.max(120, heightPct * GRID_PX)}px`, // enforce 100px minimum
     };
   }
 
@@ -261,20 +378,25 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-2">
             <Clock className="size-4 text-muted-foreground" />
-            <div className="flex w-full items-center gap-2">
-              <input
-                type="time"
-                className="w-full rounded-md border px-3 py-2 text-sm bg-white"
-                value={draftStart}
-                onChange={(e) => setDraftStart(e.target.value)}
-              />
-              <span className="text-xs text-muted-foreground">to</span>
-              <input
-                type="time"
-                className="w-full rounded-md border px-3 py-2 text-sm bg-white"
-                value={draftEnd}
-                onChange={(e) => setDraftEnd(e.target.value)}
-              />
+            {/* Constrain and allow the two time inputs to share space without overflowing */}
+            <div className="flex w-full items-center gap-2 min-w-0">
+              <div className="flex-1 min-w-0">
+                <input
+                  type="time"
+                  className="w-full min-w-0 rounded-md border px-3 py-2 text-sm bg-white"
+                  value={draftStart}
+                  onChange={(e) => setDraftStart(e.target.value)}
+                />
+              </div>
+              <span className="shrink-0 text-xs text-muted-foreground">to</span>
+              <div className="flex-1 min-w-0">
+                <input
+                  type="time"
+                  className="w-full min-w-0 rounded-md border px-3 py-2 text-sm bg-white"
+                  value={draftEnd}
+                  onChange={(e) => setDraftEnd(e.target.value)}
+                />
+              </div>
             </div>
           </div>
           <div className="sm:col-span-2">
@@ -332,20 +454,44 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             <button
               className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-card shadow-sm hover:bg-accent transition"
-              aria-label="Previous week"
-              onClick={() => setAnchor(addDays(weekStart, -7))}
+              aria-label={
+                view === "month" ? "Previous month" : view === "day" ? "Previous day" : "Previous week"
+              }
+              onClick={() => {
+                if (view === "month") {
+                  setAnchor(prevMonth(weekStart));
+                } else if (view === "day") {
+                  setAnchor(addDays(weekStart, -1));
+                } else {
+                  setAnchor(addDays(weekStart, -7));
+                }
+              }}
             >
               <ChevronLeft className="size-4" aria-hidden="true" />
             </button>
             <button
               className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-card shadow-sm hover:bg-accent transition"
-              aria-label="Next week"
-              onClick={() => setAnchor(addDays(weekStart, 7))}
+              aria-label={
+                view === "month" ? "Next month" : view === "day" ? "Next day" : "Next week"
+              }
+              onClick={() => {
+                if (view === "month") {
+                  setAnchor(nextMonth(weekStart));
+                } else if (view === "day") {
+                  setAnchor(addDays(weekStart, 1));
+                } else {
+                  setAnchor(addDays(weekStart, 7));
+                }
+              }}
             >
               <ChevronRight className="size-4" aria-hidden="true" />
             </button>
             <div className="text-lg font-semibold tracking-tight">
-              {format(weekStart, "dd MMMM")} – {format(addDays(weekStart, 6), "dd MMM")}
+              {view === "month"
+                ? `${format(monthGrid.firstOfMonth, "MMMM yyyy")}`
+                : view === "day"
+                  ? `${format(weekStart, "EEEE, MMM d, yyyy")}`
+                  : `${format(weekStart, "dd MMMM")} – ${format(addDays(weekStart, 6), "dd MMM")}`}
             </div>
           </div>
 
@@ -367,6 +513,14 @@ export default function DashboardPage() {
                 aria-pressed={view === "week"}
               >
                 Week
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("month")}
+                className={`px-3 py-1.5 text-sm rounded-full transition ${view === "month" ? "bg-card shadow-sm" : "text-muted-foreground hover:bg-muted"}`}
+                aria-pressed={view === "month"}
+              >
+                Month
               </button>
             </div>
             {/* Dialog trigger */}
@@ -416,18 +570,32 @@ export default function DashboardPage() {
                       </div>
                       <div className="grid gap-2">
                         <span className="text-sm font-medium">Time</span>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="time"
-                            value={draftStart}
-                            onChange={(e) => setDraftStart(e.target.value)}
-                          />
-                          <span className="text-xs text-muted-foreground">to</span>
-                          <Input
-                            type="time"
-                            value={draftEnd}
-                            onChange={(e) => setDraftEnd(e.target.value)}
-                          />
+                        {/*
+                          Prevent overflow and keep the native time picker icons fully visible.
+                          Strategy:
+                          - Use a min-w-0 row so flex children can shrink without clipping.
+                          - Wrap each input in a relative group with explicit padding-right to reserve space for the icon (varies by browser).
+                          - Add pr-8 and appearance-none on the input to avoid overlap and clipping.
+                          - Keep "to" label from shrinking.
+                        */}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="relative flex-1 min-w-0">
+                            <Input
+                              type="time"
+                              value={draftStart}
+                              onChange={(e) => setDraftStart(e.target.value)}
+                              className="w-full min-w-0 pr-8 appearance-none"
+                            />
+                          </div>
+                          <span className="shrink-0 text-xs text-muted-foreground">to</span>
+                          <div className="relative flex-1 min-w-0">
+                            <Input
+                              type="time"
+                              value={draftEnd}
+                              onChange={(e) => setDraftEnd(e.target.value)}
+                              className="w-full min-w-0 pr-8 appearance-none"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -471,7 +639,9 @@ export default function DashboardPage() {
         <div className="rounded-lg border p-4">
           <div className="mb-3 flex items-center gap-2">
             <CalendarDays className="size-5" aria-hidden="true" />
-            <h1 className="text-xl font-semibold tracking-tight">Weekly Dashboard</h1>
+            <h1 className="text-xl font-semibold tracking-tight">
+              {view === "day" ? "Daily Dashboard" : view === "week" ? "Weekly Dashboard" : "Monthly Dashboard"}
+            </h1>
           </div>
           <Separator className="mb-4" />
 
@@ -481,9 +651,68 @@ export default function DashboardPage() {
               <TabsTrigger className="rounded-full" value="chores">Chores</TabsTrigger>
             </TabsList>
 
-            {/* Events - daily & weekly views */}
+            {/* Events - daily, weekly & monthly views */}
             <TabsContent value="events" className="mt-4">
-              {view === "week" ? (
+              {view === "month" ? (
+                /* MONTH VIEW */
+                <div className="rounded-xl border bg-card/90 p-3 shadow-sm transition hover:shadow-md">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="text-sm font-semibold">{format(monthGrid.firstOfMonth, "MMMM yyyy")}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {format(monthGrid.gridStart, "MMM d")} – {format(addDays(monthGrid.gridStart, 41), "MMM d")}
+                    </div>
+                  </div>
+
+                  {/* Month grid: 7 columns x 6 rows */}
+                  <div className="grid grid-cols-7 gap-2">
+                    {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d)=>(
+                      <div key={d} className="text-xs font-medium text-muted-foreground px-2">{d}</div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-2">
+                    {monthGrid.cells.map((cell, idx) => {
+                      const isToday = dayKey(cell.date) === dayKey(new Date());
+                      const dayEvents = mergedEvents.filter((e) => {
+                        const ds = new Date(cell.date); ds.setHours(0,0,0,0);
+                        const de = new Date(cell.date); de.setHours(23,59,59,999);
+                        return !(e.end.getTime() < ds.getTime() || e.start.getTime() > de.getTime());
+                      });
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`rounded-lg border p-2 bg-muted/30 hover:bg-muted/50 transition relative ${!cell.inCurrentMonth ? "opacity-50" : ""}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className={`text-xs font-semibold ${isToday ? "text-primary" : ""}`}>
+                              {format(cell.date, "d")}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">{dayEvents.length} evts</div>
+                          </div>
+
+                          {/* Event pills */}
+                          <div className="mt-2 space-y-1">
+                            {dayEvents.slice(0, 3).map((e, i) => (
+                              <div
+                                key={`${e.id}-${i}`}
+                                className="truncate rounded-md px-2 py-1 text-xs bg-card shadow-sm border"
+                                title={`${e.title} • ${format(e.start, "p")}–${format(e.end, "p")}`}
+                                onClick={() => openEditor(e)}
+                              >
+                                <span className="mr-1">{e.emoji}</span>
+                                {e.title}
+                              </div>
+                            ))}
+                            {dayEvents.length > 3 ? (
+                              <div className="text-[10px] text-muted-foreground">+{dayEvents.length - 3} more</div>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : view === "week" ? (
                 /* WEEK VIEW */
                 <div className="rounded-xl border bg-card/90 p-3 shadow-sm transition hover:shadow-md">
                   <div className="mb-2 flex items-center justify-between">
@@ -518,9 +747,21 @@ export default function DashboardPage() {
                             return <div key={i} className="hour-line" style={{ top }} />;
                           });
                         })()}
-                        {/* Current time line across all days */}
-                        {nowTop !== null ? <div className="current-time-line" style={{ top: nowTop }} /> : null}
                       </div>
+
+                      {/* Single overlayed current time line across the entire week grid */}
+                      {nowTop !== null ? (
+                        <div
+                          className="current-time-line pointer-events-none"
+                          style={{
+                            top: nowTop,
+                            position: "absolute",
+                            left: 0,
+                            right: 0,
+                            zIndex: 20
+                          }}
+                        />
+                      ) : null}
 
                       {/* Foreground: 7 columns, each with its own positioned events, but aligned to the shared grid */}
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
@@ -536,10 +777,8 @@ export default function DashboardPage() {
 
                               {/* Column track: same height as GRID_PX, events absolutely positioned within */}
                               <div className="relative rounded-lg bg-muted/40" style={{ height: GRID_PX }}>
-                                {/* Current time indicator duplicated per column for visual clarity; shares the same top value */}
-                                {isToday && nowTop !== null ? (
-                                  <div className="current-time-line" style={{ top: nowTop }} />
-                                ) : null}
+                                {/* Remove per-column current time (we show a single line across the whole week above) */}
+                                {null}
 
                                 {mergedEvents
                                   .filter((e) => {
@@ -550,12 +789,19 @@ export default function DashboardPage() {
                                     return !(eEndTs < dayStartTs || eStartTs > dayEndTs);
                                   })
                                   .map((e, idx) => (
-                                    <div
-                                      key={`${e.id}-${idx}`}
-                                      className={`timegrid-event ${["event-green","event-purple","event-orange","event-blue"][idx % 4]}`}
-                                      style={eventBlockStyle(e, d.date)}
+                                    <Popover
+                                      key={`pop-${e.id}-${dayKey(d.date)}`}
+                                      open={editingId === e.id}
+                                      onOpenChange={(o) => (o ? openEditor(e) : setEditingId(null))}
                                     >
-                                      <div className="title-row">
+                                      <PopoverTrigger asChild>
+                                        <div
+                                          className={`timegrid-event cursor-pointer ${["event-green","event-purple","event-orange","event-blue"][idx % 4]}`}
+                                          style={eventBlockStyle(e, d.date)}
+                                          data-col-date={format(d.date, "yyyy-MM-dd")}
+                                          onClick={() => openEditor(e)}
+                                        >
+                                          <div className="title-row">
                                         <div className="title">
                                           <span className="mr-1">{e.emoji}</span>
                                           {e.title}
@@ -567,14 +813,92 @@ export default function DashboardPage() {
                                       {e.description ? (
                                         <div className="desc">{e.description}</div>
                                       ) : null}
-                                      <div className="chips">
-                                        {e.participants.map((p) => (
-                                          <span key={p} className="chip">
-                                            {p}
-                                          </span>
-                                        ))}
+                                      <div className="mt-2 flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background *:data-[slot=avatar]:grayscale">
+                                        {e.participants.map((p, i) => {
+                                          const avatarSrcMap: Record<string, string> = {
+                                            "Maggie": "",
+                                            "Max": "",
+                                            "Mom": "",
+                                            "Papa": "https://github.com/sergiomasellis.png",
+                                            "Sam": "",
+                                          };
+                                          const src = avatarSrcMap[p]; // may be undefined
+                                          const initials = p.split(" ").map(s => s[0]).join("").slice(0, 2).toUpperCase() || "?";
+                                          return (
+                                            <Avatar key={`${p}-${i}`} className="size-6">
+                                              <AvatarImage
+                                                src={src}
+                                                alt={p}
+                                                onError={(e) => {
+                                                  // Clear src to force Avatar to show the fallback
+                                                  // @ts-ignore
+                                                  e.currentTarget.src = "";
+                                                }}
+                                              />
+                                              <AvatarFallback>{initials}</AvatarFallback>
+                                            </Avatar>
+                                          );
+                                        })}
                                       </div>
                                     </div>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-80" align="start" sideOffset={8}>
+                                        <div className="grid gap-3">
+                                          <div className="space-y-1">
+                                            <h4 className="text-sm font-medium leading-none">Edit Event</h4>
+                                            <p className="text-xs text-muted-foreground">Update details and save.</p>
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <label className="text-sm font-medium">Title</label>
+                                            <Input value={editTitle} onChange={(e)=>setEditTitle(e.target.value)} />
+                                          </div>
+                                          <div className="grid sm:grid-cols-2 gap-3">
+                                            <div className="grid gap-2">
+                                              <label className="text-sm font-medium">Date</label>
+                                              <Input type="date" value={editDate} onChange={(e)=>setEditDate(e.target.value)} />
+                                            </div>
+                                            <div className="grid gap-2">
+                                              <span className="text-sm font-medium">Time</span>
+                                              <div className="flex items-center gap-2 min-w-0">
+                                                <div className="flex-1 min-w-0">
+                                                  <Input type="time" value={editStart} onChange={(e)=>setEditStart(e.target.value)} className="w-full min-w-0 pr-8 appearance-none" />
+                                                </div>
+                                                <span className="shrink-0 text-xs text-muted-foreground">to</span>
+                                                <div className="flex-1 min-w-0">
+                                                  <Input type="time" value={editEnd} onChange={(e)=>setEditEnd(e.target.value)} className="w-full min-w-0 pr-8 appearance-none" />
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <label className="text-sm font-medium">Location / Description</label>
+                                            <Input value={editLocation} onChange={(e)=>setEditLocation(e.target.value)} placeholder="Optional" />
+                                          </div>
+                                          <div className="grid gap-2">
+                                            <label className="text-sm font-medium">Participants</label>
+                                            <Input value={editParticipants} onChange={(e)=>setEditParticipants(e.target.value)} placeholder="Comma separated" />
+                                          </div>
+                                          <div className="flex items-center justify-between pt-1">
+                                            <button
+                                              type="button"
+                                              onClick={deleteEvent}
+                                              className="inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+                                              aria-label="Delete event"
+                                            >
+                                              <Trash2 className="size-4" /> Delete
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={saveEdit}
+                                              className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
+                                              aria-label="Save event"
+                                            >
+                                              <Save className="size-4" /> Save
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </PopoverContent>
+                                    </Popover>
                                   ))}
                               </div>
                             </div>
@@ -619,7 +943,10 @@ export default function DashboardPage() {
                             return <div key={i} className="hour-line" style={{ top }} />;
                           });
                         })()}
-                        {nowTop !== null ? <div className="current-time-line" style={{ top: nowTop }} /> : null}
+                        {/* Show current time only if the selected day is today */}
+                        {nowTop !== null && dayKey(selectedDay) === dayKey(new Date()) ? (
+                          <div className="current-time-line" style={{ top: nowTop }} />
+                        ) : null}
                       </div>
 
                       {/* Column track */}
@@ -632,11 +959,17 @@ export default function DashboardPage() {
                             return <div key={`col-hour-${i}`} className="hour-line" style={{ top }} />;
                           });
                         })()}
-                        {/* Current time indicator within the column */}
-                        {nowTop !== null ? <div className="current-time-line" style={{ top: nowTop }} /> : null}
+                        {/* Current time indicator within the column; only on today's date */}
+                        {nowTop !== null && dayKey(selectedDay) === dayKey(new Date()) ? (
+                          <div className="current-time-line" style={{ top: nowTop }} />
+                        ) : null}
 
                         {mergedEvents
-                          .filter((e) => dayKey(e.start) === dayKey(selectedDay) || dayKey(e.end) === dayKey(selectedDay) || (e.start <= selectedDay && e.end >= selectedDay))
+                          .filter((e) => {
+                            const ds = new Date(selectedDay); ds.setHours(0,0,0,0);
+                            const de = new Date(selectedDay); de.setHours(23,59,59,999);
+                            return !(e.end.getTime() < ds.getTime() || e.start.getTime() > de.getTime());
+                          })
                           .map((e, idx) => (
                             <div
                               key={`${e.id}-${idx}`}

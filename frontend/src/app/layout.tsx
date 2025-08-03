@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/features/shell/AppShell";
@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   icons: [{ rel: "icon", url: "/favicon.ico" }],
   applicationName: "Tapestry",
   appleWebApp: { title: "Tapestry", capable: true, statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
   themeColor: "#ffffff",
 };
 
