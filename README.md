@@ -1,5 +1,7 @@
 # Tapestry - Family Calendar Application
 
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 ## Overview
 Tapestry is a modern, touch-friendly multi-user calendar application designed for families. It provides a weekly view of events, chore tracking with a point system, and a leaderboard to encourage children to complete their tasks.
 
@@ -103,4 +105,5 @@ To contribute to Tapestry:
 5. Create a pull request
 
 ## License
-This project is licensed under the MIT License.
+
+This project is licensed under the [MIT License](./LICENSE) © 2025 Sergio Masellis.
