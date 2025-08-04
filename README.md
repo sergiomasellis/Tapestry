@@ -3,7 +3,7 @@
 ## Overview
 Tapestry is a modern, touch-friendly multi-user calendar application designed for families. It provides a weekly view of events, chore tracking with a point system, and a leaderboard to encourage children to complete their tasks.
 
-<img width="1218" height="1036" alt="image" src="https://github.com/user-attachments/assets/67926f5d-ddd5-413c-8672-37500458e07f" />
+<img width="1103" height="1030" alt="image" src="https://github.com/user-attachments/assets/5041e590-4f73-4ef0-bba1-71757d9381a1" />
 
 ## Features
 - Weekly calendar view with events
