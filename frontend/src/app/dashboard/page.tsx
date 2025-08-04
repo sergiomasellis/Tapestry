@@ -292,6 +292,25 @@ export default function DashboardPage() {
   const END_HOUR = 20;  // to 8PM
   const TOTAL_MIN = (END_HOUR - START_HOUR) * 60;
 
+  // Render hour lines utility: returns absolute-positioned thin lines across the full grid width
+  function HourLines() {
+    const count = END_HOUR - START_HOUR + 1;
+    return (
+      <>
+        {Array.from({ length: count }).map((_, i) => {
+          const top = (i / (count - 1)) * GRID_PX;
+          return (
+            <div
+              key={`hourline-${i}`}
+              className="pointer-events-none absolute left-0 right-0 border-t border-border/40"
+              style={{ top }}
+            />
+          );
+        })}
+      </>
+    );
+  }
+
   // create new event handler
   function addNewEvent() {
     const startDate = new Date(draftDate + "T" + draftStart);
@@ -335,9 +354,160 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, []);
 
+  // Hover preview state for click-to-create
+  const [hoverPreview, setHoverPreview] = useState<{
+    date: Date;
+    topPx: number;
+    heightPx: number;
+    key: string;
+  } | null>(null);
+
+  // Click-to-create helpers
+  function snapMinutes(min: number, step = 30) {
+    const snapped = Math.round(min / step) * step;
+    return Math.max(START_HOUR * 60, Math.min(END_HOUR * 60, snapped));
+  }
+
+  function calcSlot(date: Date, yWithinGridPx: number) {
+    // Clamp Y strictly to the grid to avoid creating outside bounds
+    const clampedY = Math.max(0, Math.min(GRID_PX - 1, yWithinGridPx));
+    const pct = clampedY / GRID_PX;
+
+    // Compute start minutes within visible window, snapped to 30-min increments
+    let minutesFromStart = Math.round(pct * TOTAL_MIN);
+    minutesFromStart = Math.max(0, Math.min(TOTAL_MIN - 30, minutesFromStart)); // ensure space for 60-min duration
+
+    const snappedMin = snapMinutes(START_HOUR * 60 + minutesFromStart, 30);
+
+    // Derive start/end Date objects
+    const hours = Math.floor(snappedMin / 60);
+    const minutes = snappedMin % 60;
+
+    const base = new Date(date);
+    base.setHours(hours, minutes, 0, 0);
+
+    const end = new Date(base);
+    end.setMinutes(end.getMinutes() + 60);
+
+    // Convert to pixel positions, fully clamped within the grid
+    const startMinFromGrid = snappedMin - START_HOUR * 60;
+    const topPx = Math.max(0, Math.min(GRID_PX - 1, (startMinFromGrid / TOTAL_MIN) * GRID_PX));
+    const heightPx = Math.min(GRID_PX - topPx, Math.max(40, (60 / TOTAL_MIN) * GRID_PX)); // keep within grid
+
+    return { base, end, topPx, heightPx };
+  }
+
+  function openCreateAt(date: Date, yWithinGridPx: number) {
+    // yWithinGridPx is relative to the column/grid container (height = GRID_PX)
+    const { base, end, topPx } = calcSlot(date, yWithinGridPx);
+
+    // Ignore clicks that would fall completely outside the grid (defensive)
+    if (topPx < 0 || topPx >= GRID_PX) return;
+
+    setDraftDate(format(date, "yyyy-MM-dd"));
+    setDraftStart(format(base, "HH:mm"));
+    setDraftEnd(format(end, "HH:mm"));
+    setDraftTitle("");
+    setDraftLocation("");
+    setDraftParticipants("");
+    setOpenDialog(true);
+  }
+
+  function updateHoverPreview(date: Date, yWithinGridPx: number) {
+    const { topPx, heightPx } = calcSlot(date, yWithinGridPx);
+    const nextKey = `${format(date, "yyyy-MM-dd")}-${Math.round(topPx)}-${Math.round(heightPx)}`;
+    // Guard: only update state if the preview meaningfully changed to prevent update storms
+    setHoverPreview(prev => {
+      if (prev && prev.key === nextKey) return prev;
+      return {
+        date,
+        topPx,
+        heightPx,
+        key: nextKey
+      };
+    });
+  }
+
   // helpers
   const minutesFromMidnight = (d: Date) => d.getHours() * 60 + d.getMinutes();
   const dayKey = (d: Date) => format(d, "yyyy-MM-dd");
+
+  // Memoize hover preview key to avoid re-renders feeding back into mousemove handlers
+  const hoverKey = hoverPreview ? `${dayKey(hoverPreview.date)}-${Math.round(hoverPreview.topPx)}-${Math.round(hoverPreview.heightPx)}` : null;
+
+  // Compute horizontal positions for overlapping events within a single day column
+  function layoutOverlaps(dayDate: Date, evts: EventItem[]) {
+    // Clamp to single-day slices and compute intervals
+    const dayStart = new Date(dayDate); dayStart.setHours(0,0,0,0);
+    const dayEnd = new Date(dayDate); dayEnd.setHours(23,59,59,999);
+
+    const items = evts.map((e, idx) => {
+      const start = new Date(Math.max(e.start.getTime(), dayStart.getTime()));
+      const end = new Date(Math.min(e.end.getTime(), dayEnd.getTime()));
+      const startMin = minutesFromMidnight(start);
+      const endMin = Math.max(startMin + 1, minutesFromMidnight(end)); // avoid zero-length
+      return { e, idx, startMin, endMin, group:-1, col:-1, colCount:1 };
+    }).sort((a,b)=> a.startMin - b.startMin || a.endMin - b.endMin);
+
+    // Build overlap groups (connected components)
+    let groupId = 0;
+    for (let i=0;i<items.length;i++){
+      if (items[i].group !== -1) continue;
+      items[i].group = groupId;
+      let changed = true;
+      while (changed){
+        changed = false;
+        for (let j=0;j<items.length;j++){
+          if (items[j].group === -1){
+            const overlaps = items.some(k =>
+              k.group === groupId && !(items[j].endMin <= k.startMin || items[j].startMin >= k.endMin)
+            );
+            if (overlaps){
+              items[j].group = groupId;
+              changed = true;
+            }
+          }
+        }
+      }
+      groupId++;
+    }
+
+    // Assign columns greedily per group
+    const groups: Record<number, typeof items> = {};
+    for (const it of items){
+      (groups[it.group] ||= []).push(it);
+    }
+    for (const g of Object.values(groups)){
+      g.sort((a,b)=> a.startMin - b.startMin || a.endMin - b.endMin);
+      const active: {endMin:number, col:number}[] = [];
+      for (const it of g){
+        // free finished columns
+        for (let i=active.length-1;i>=0;i--){
+          if (active[i].endMin <= it.startMin) active.splice(i,1);
+        }
+        // smallest available col
+        let c = 0;
+        const used = new Set(active.map(a=>a.col));
+        while (used.has(c)) c++;
+        it.col = c;
+        active.push({ endMin: it.endMin, col: c });
+        // update colCount for this group
+        const maxCol = Math.max(...g.map(x=>x.col));
+        for (const x of g) x.colCount = Math.max(x.colCount, maxCol+1);
+      }
+    }
+
+    // Produce CSS positions
+    const pos: Record<string, { left: string; width: string }> = {};
+    for (const it of items){
+      const widthPct = 100 / Math.max(1, it.colCount);
+      const leftPct = it.col * widthPct;
+      pos[it.e.id] = { left: `${leftPct}%`, width: `calc(${widthPct}% - 6px)` }; // include gutter
+    }
+    return pos;
+  }
+
+  // removed duplicate layoutOverlaps (single implementation kept above)
 
   function eventBlockStyle(e: EventItem, dayDate: Date): React.CSSProperties {
     // clamp event to current day
@@ -720,8 +890,22 @@ export default function DashboardPage() {
                     <div className="text-[11px] text-muted-foreground">{format(weekStart, "MMM d")} – {format(addDays(weekStart, 6), "MMM d")}</div>
                   </div>
 
+                  {/* Weekday headers OUTSIDE the hourly grid */}
+                  <div className="grid grid-cols-[56px_1fr] gap-2 mb-2">
+                    <div />{/* spacer for hour rail */}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
+                      {days.map((d) => (
+                        <div key={`hdr-${d.key}`} className="flex items-center justify-between">
+                          <div className="text-sm font-semibold">{d.label}</div>
+                          <div className="text-[11px] text-muted-foreground">0 tasks</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Unified overlay: time chart (top) superimposed over daily columns (bottom) in a single stacking context */}
                   <div className="grid grid-cols-[56px_1fr] gap-2">
-                    {/* Single shared hour rail */}
+                    {/* Left shared hour rail */}
                     <div className="timegrid-rail">
                       {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i).map((h, i, arr) => {
                         const top = (i / (arr.length - 1)) * GRID_PX;
@@ -735,60 +919,75 @@ export default function DashboardPage() {
                       })}
                     </div>
 
-                    {/* Right: seven day columns sharing the same vertical timeline */}
-                    <div className="relative">
-                      {/* Underlay hour lines spanning across all days */}
-                      <div className="timegrid-main">
-                        {(() => {
-                          const count = END_HOUR - START_HOUR + 1;
-                          const arr = Array.from({ length: count });
-                          return arr.map((_, i) => {
-                            const top = (i / (count - 1)) * GRID_PX;
-                            return <div key={i} className="hour-line" style={{ top }} />;
-                          });
-                        })()}
+                    {/* Right: single relative container hosting both overlays */}
+                    <div className="relative" style={{ height: GRID_PX }}>
+                      {/* Middle layer: unified hour grid spanning all columns (ensure visible above column bg) */}
+                      <div className="absolute inset-0 z-[5] pointer-events-none">
+                        {Array.from({ length: END_HOUR - START_HOUR + 1 }).map((_, i, arr) => {
+                          const top = (i / (arr.length - 1)) * GRID_PX;
+                          return (
+                            <div
+                              key={`week-hourline-${i}`}
+                              className="pointer-events-none absolute left-0 right-0"
+                              style={{
+                                top,
+                                borderTop: "1px solid color-mix(in oklab, var(--foreground), white 90%)"
+                              }}
+                            />
+                          );
+                        })}
+                        {nowTop !== null ? (
+                          <div className="current-time-line absolute left-0 right-0" style={{ top: nowTop }} />
+                        ) : null}
                       </div>
 
-                      {/* Single overlayed current time line across the entire week grid */}
-                      {nowTop !== null ? (
-                        <div
-                          className="current-time-line pointer-events-none"
-                          style={{
-                            top: nowTop,
-                            position: "absolute",
-                            left: 0,
-                            right: 0,
-                            zIndex: 20
-                          }}
-                        />
-                      ) : null}
-
-                      {/* Foreground: 7 columns, each with its own positioned events, but aligned to the shared grid */}
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
+                      {/* Top layer: seven day columns (interactive) - ONLY the interactive columns live inside the grid.
+                          The headers are rendered above (outside) the grid to avoid aligning with the 8AM line. */}
+                      <div className="absolute inset-0 z-[10] grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7 items-start content-start">
                         {days.map((d) => {
-                          const isToday = dayKey(d.date) === dayKey(new Date());
                           return (
-                            <div key={d.key} className="relative">
-                              {/* Day header */}
-                              <div className="mb-2 flex items-center justify-between">
-                                <div className="text-sm font-semibold">{d.label}</div>
-                                <div className="text-[11px] text-muted-foreground">0 tasks</div>
-                              </div>
+                            <div key={d.key} className="relative flex h-full flex-col">
 
-                              {/* Column track: same height as GRID_PX, events absolutely positioned within */}
-                              <div className="relative rounded-lg bg-muted/40" style={{ height: GRID_PX }}>
-                                {/* Remove per-column current time (we show a single line across the whole week above) */}
-                                {null}
+                              <div
+                                className="relative rounded-lg bg-muted/40 overflow-hidden flex-1"
+                                style={{ minHeight: GRID_PX }}
+                                onMouseMove={(e) => {
+                                  const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                                  const rawY = e.clientY - rect.top;
+                                  const y = Math.max(0, Math.min(GRID_PX - 1, rawY));
+                                  updateHoverPreview(d.date, y);
+                                }}
+                                onMouseLeave={() => setHoverPreview(null)}
+                                onClick={(e) => {
+                                  const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                                  const rawY = e.clientY - rect.top;
+                                  const y = Math.max(0, Math.min(GRID_PX - 1, rawY));
+                                  openCreateAt(d.date, y);
+                                }}
+                                role="button"
+                                aria-label={`Create event on ${format(d.date, "yyyy-MM-dd")}`}
+                                title="Click to create an event"
+                              >
+                                {/* Hover preview */}
+                                {hoverPreview && dayKey(hoverPreview.date) === dayKey(d.date) ? (
+                                  <div
+                                    className="absolute left-1 right-1 rounded-md border-2 border-dashed border-primary/60 bg-primary/10 flex items-center justify-center pointer-events-none"
+                                    style={{ top: hoverPreview.topPx, height: hoverPreview.heightPx }}
+                                  >
+                                    <span className="text-primary/70 text-xl font-semibold select-none">+</span>
+                                  </div>
+                                ) : null}
 
-                                {mergedEvents
-                                  .filter((e) => {
+                                {(() => {
+                                  const dayEvents = mergedEvents.filter((e) => {
                                     const dayStartTs = new Date(d.date).setHours(0, 0, 0, 0);
                                     const dayEndTs = new Date(d.date).setHours(23, 59, 59, 999);
                                     const eStartTs = e.start.getTime();
                                     const eEndTs = e.end.getTime();
                                     return !(eEndTs < dayStartTs || eStartTs > dayEndTs);
-                                  })
-                                  .map((e, idx) => (
+                                  });
+                                  const positions = layoutOverlaps(d.date, dayEvents);
+                                  return dayEvents.map((e, idx) => (
                                     <Popover
                                       key={`pop-${e.id}-${dayKey(d.date)}`}
                                       open={editingId === e.id}
@@ -797,50 +996,59 @@ export default function DashboardPage() {
                                       <PopoverTrigger asChild>
                                         <div
                                           className={`timegrid-event cursor-pointer ${["event-green","event-purple","event-orange","event-blue"][idx % 4]}`}
-                                          style={eventBlockStyle(e, d.date)}
+                                          style={{
+                                            ...eventBlockStyle(e, d.date),
+                                            position: "absolute",
+                                            left: positions[e.id]?.left ?? "0%",
+                                            width: positions[e.id]?.width ?? "100%",
+                                            // ensure events never spill outside the column box
+                                            maxHeight: GRID_PX,
+                                            overflow: "hidden",
+                                            boxSizing: "border-box",
+                                            right: "6px" /* preserve built-in gutter while honoring overflow hidden */
+                                          }}
                                           data-col-date={format(d.date, "yyyy-MM-dd")}
                                           onClick={() => openEditor(e)}
                                         >
                                           <div className="title-row">
-                                        <div className="title">
-                                          <span className="mr-1">{e.emoji}</span>
-                                          {e.title}
+                                            <div className="title">
+                                              <span className="mr-1">{e.emoji}</span>
+                                              {e.title}
+                                            </div>
+                                          </div>
+                                          <div className="time">
+                                            {format(e.start, "p")} – {format(e.end, "p")}
+                                          </div>
+                                          {e.description ? (
+                                            <div className="desc">{e.description}</div>
+                                          ) : null}
+                                          <div className="mt-2 flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background *:data-[slot=avatar]:grayscale">
+                                            {e.participants.map((p, i) => {
+                                              const avatarSrcMap: Record<string, string> = {
+                                                "Maggie": "",
+                                                "Max": "",
+                                                "Mom": "",
+                                                "Papa": "https://github.com/sergiomasellis.png",
+                                                "Sam": "",
+                                              };
+                                              const src = avatarSrcMap[p];
+                                              const initials = p.split(" ").map(s => s[0]).join("").slice(0, 2).toUpperCase() || "?";
+                                              return (
+                                                <Avatar key={`${p}-${i}`} className="size-6">
+                                                  <AvatarImage
+                                                    src={src}
+                                                    alt={p}
+                                                    onError={(e) => {
+                                                      // @ts-ignore
+                                                      e.currentTarget.src = "";
+                                                    }}
+                                                  />
+                                                  <AvatarFallback>{initials}</AvatarFallback>
+                                                </Avatar>
+                                              );
+                                            })}
+                                          </div>
                                         </div>
-                                      </div>
-                                      <div className="time">
-                                        {format(e.start, "p")} – {format(e.end, "p")}
-                                      </div>
-                                      {e.description ? (
-                                        <div className="desc">{e.description}</div>
-                                      ) : null}
-                                      <div className="mt-2 flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background *:data-[slot=avatar]:grayscale">
-                                        {e.participants.map((p, i) => {
-                                          const avatarSrcMap: Record<string, string> = {
-                                            "Maggie": "",
-                                            "Max": "",
-                                            "Mom": "",
-                                            "Papa": "https://github.com/sergiomasellis.png",
-                                            "Sam": "",
-                                          };
-                                          const src = avatarSrcMap[p]; // may be undefined
-                                          const initials = p.split(" ").map(s => s[0]).join("").slice(0, 2).toUpperCase() || "?";
-                                          return (
-                                            <Avatar key={`${p}-${i}`} className="size-6">
-                                              <AvatarImage
-                                                src={src}
-                                                alt={p}
-                                                onError={(e) => {
-                                                  // Clear src to force Avatar to show the fallback
-                                                  // @ts-ignore
-                                                  e.currentTarget.src = "";
-                                                }}
-                                              />
-                                              <AvatarFallback>{initials}</AvatarFallback>
-                                            </Avatar>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
                                       </PopoverTrigger>
                                       <PopoverContent className="w-80" align="start" sideOffset={8}>
                                         <div className="grid gap-3">
@@ -899,12 +1107,14 @@ export default function DashboardPage() {
                                         </div>
                                       </PopoverContent>
                                     </Popover>
-                                  ))}
+                                  ));
+                                })()}
                               </div>
                             </div>
                           );
                         })}
                       </div>
+
                     </div>
                   </div>
                 </div>
@@ -932,9 +1142,9 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Right: single day column aligned to shared rail */}
-                    <div className="relative">
-                      {/* Underlay hour lines */}
-                      <div className="timegrid-main">
+                    <div className="relative" style={{ height: GRID_PX }}>
+                      {/* Underlay hour lines (behind events) */}
+                      <div className="timegrid-main absolute inset-0" style={{ zIndex: 0 }}>
                         {(() => {
                           const count = END_HOUR - START_HOUR + 1;
                           const arr = Array.from({ length: count });
@@ -943,38 +1153,67 @@ export default function DashboardPage() {
                             return <div key={i} className="hour-line" style={{ top }} />;
                           });
                         })()}
-                        {/* Show current time only if the selected day is today */}
-                        {nowTop !== null && dayKey(selectedDay) === dayKey(new Date()) ? (
-                          <div className="current-time-line" style={{ top: nowTop }} />
-                        ) : null}
                       </div>
+                      {/* Current time only if the selected day is today, above hour lines but below events */}
+                      {nowTop !== null && dayKey(selectedDay) === dayKey(new Date()) ? (
+                        <div className="current-time-line absolute left-0 right-0 pointer-events-none" style={{ top: nowTop, zIndex: 5 }} />
+                      ) : null}
 
                       {/* Column track */}
-                      <div className="relative rounded-lg bg-muted/40" style={{ height: GRID_PX }}>
+                      <div
+                        className="relative rounded-lg bg-muted/40"
+                        style={{ height: GRID_PX, zIndex: 10 }}
+                        onMouseMove={(e) => {
+                          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                          const rawY = e.clientY - rect.top;
+                          const y = Math.max(0, Math.min(GRID_PX - 1, rawY));
+                          updateHoverPreview(selectedDay, y);
+                        }}
+                        onMouseLeave={() => setHoverPreview(null)}
+                        onClick={(e) => {
+                          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                          const rawY = e.clientY - rect.top;
+                          const y = Math.max(0, Math.min(GRID_PX - 1, rawY));
+                          openCreateAt(selectedDay, y);
+                        }}
+                        role="button"
+                        aria-label={`Create event on ${format(selectedDay, "yyyy-MM-dd")}`}
+                        title="Click to create an event"
+                      >
+                        {/* Hover preview ghost block (match weekly view with centered + icon) */}
+                        {hoverPreview && dayKey(hoverPreview.date) === dayKey(selectedDay) ? (
+                          <div
+                            className="absolute left-1 right-1 rounded-md border-2 border-dashed border-primary/60 bg-primary/10 flex items-center justify-center pointer-events-none"
+                            style={{ top: hoverPreview.topPx, height: hoverPreview.heightPx }}
+                          >
+                            <span className="text-primary/70 text-xl font-semibold select-none">+</span>
+                          </div>
+                        ) : null}
+
                         {/* Hour lines inside column to ensure visibility over column bg */}
-                        {(() => {
-                          const count = END_HOUR - START_HOUR + 1;
-                          return Array.from({ length: count }).map((_, i) => {
-                            const top = (i / (count - 1)) * GRID_PX;
-                            return <div key={`col-hour-${i}`} className="hour-line" style={{ top }} />;
-                          });
-                        })()}
+                        <HourLines />
                         {/* Current time indicator within the column; only on today's date */}
                         {nowTop !== null && dayKey(selectedDay) === dayKey(new Date()) ? (
                           <div className="current-time-line" style={{ top: nowTop }} />
                         ) : null}
 
-                        {mergedEvents
-                          .filter((e) => {
+                        {(() => {
+                          const dayEvents = mergedEvents.filter((e) => {
                             const ds = new Date(selectedDay); ds.setHours(0,0,0,0);
                             const de = new Date(selectedDay); de.setHours(23,59,59,999);
                             return !(e.end.getTime() < ds.getTime() || e.start.getTime() > de.getTime());
-                          })
-                          .map((e, idx) => (
+                          });
+                          const positions = layoutOverlaps(selectedDay, dayEvents);
+                          return dayEvents.map((e, idx) => (
                             <div
                               key={`${e.id}-${idx}`}
                               className={`timegrid-event ${["event-green","event-purple","event-orange","event-blue"][idx % 4]}`}
-                              style={eventBlockStyle(e, selectedDay)}
+                              style={{
+                                ...eventBlockStyle(e, selectedDay),
+                                position: "absolute",
+                                left: positions[e.id]?.left ?? "0%",
+                                width: positions[e.id]?.width ?? "100%"
+                              }}
                             >
                               <div className="title-row">
                                 <div className="title">
@@ -996,7 +1235,8 @@ export default function DashboardPage() {
                                 ))}
                               </div>
                             </div>
-                          ))}
+                          ));
+                        })()}
                       </div>
                     </div>
                   </div>
