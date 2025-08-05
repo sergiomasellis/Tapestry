@@ -64,7 +64,10 @@ export default function DashboardPage() {
   // New Event dialog state
   const [openDialog, setOpenDialog] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
-  const [draftDate, setDraftDate] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
+  // Multi-day support: start and end dates
+  const [draftStartDate, setDraftStartDate] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
+  const [draftEndDate, setDraftEndDate] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
+  // Intra-day time range
   const [draftStart, setDraftStart] = useState<string>("09:00");
   const [draftEnd, setDraftEnd] = useState<string>("10:00");
   const [draftLocation, setDraftLocation] = useState<string>("");
@@ -189,54 +192,88 @@ export default function DashboardPage() {
     return [...eventList, ...events];
   }, [eventList, events]);
 
-  // Currently selected event for editing (by id)
+  // Currently selected event slice for editing (eventId-dayKey)
   const [editingId, setEditingId] = useState<string | null>(null);
   // Local edit form state
   const [editTitle, setEditTitle] = useState("");
-  const [editDate, setEditDate] = useState("");
+  // Multi-day support for editor
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
   const [editStart, setEditStart] = useState("");
   const [editEnd, setEditEnd] = useState("");
   const [editLocation, setEditLocation] = useState("");
   const [editParticipants, setEditParticipants] = useState("");
 
   function openEditor(e: EventItem) {
-    setEditingId(e.id);
+    // Do NOT change editingId here; it is set by the click handler
     setEditTitle(e.title);
 
-    // If an event spans multiple days, use the start day of the currently
-    // rendered column when opening from week view so edits reflect that day’s slice.
-    // Fallback to the event.start date when no column context is available.
-    const currentColumnDate =
-      // Try to read a data attribute we attach on the clicked element (set below)
-      (typeof window !== "undefined" &&
-        (document.activeElement as HTMLElement | null)?.dataset?.colDate) || null
+    // Robustly determine the day slice being edited:
+    // Priority order:
+    // 1) explicit column context carried on the triggering element (data-col-date)
+    // 2) currently hovered preview day (if visible and same event/day context)
+    // 3) fallback to the event.start date
+    let inferredDate: Date | null = null;
 
-    const baseDate = currentColumnDate ? new Date(currentColumnDate) : e.start;
+    // Read focused element data attribute, if present (robust to SSR and nulls)
+    if (typeof window !== "undefined" && document) {
+      const active = document.activeElement as HTMLElement | null;
+      const colDateAttr = active && "dataset" in active ? (active as HTMLElement).dataset?.colDate : undefined;
+      if (colDateAttr) {
+        const d = new Date(colDateAttr);
+        if (!isNaN(d.getTime())) inferredDate = d;
+      }
+    }
 
-    setEditDate(format(baseDate, "yyyy-MM-dd"));
+    // Fallback: infer from event.start if no column hint
+    if (!inferredDate) {
+      inferredDate = new Date(e.start);
+    }
 
-    // Determine time range relative to the selected day slice:
-    // - If editing on a middle day of a multi-day event, start at 00:00 and end at 23:59 for that day.
-    // - If editing on the first/last day, clamp to the actual event boundaries.
+    // Normalize to YYYY-MM-DD for editor inputs
+    const baseDate = inferredDate;
+    setEditStartDate(format(e.start, "yyyy-MM-dd"));
+    setEditEndDate(format(e.end, "yyyy-MM-dd"));
+
+    // Compute the visible slice for this date relative to the event bounds
     const startOfDay = new Date(baseDate); startOfDay.setHours(0,0,0,0);
     const endOfDay = new Date(baseDate); endOfDay.setHours(23,59,59,999);
 
+    // Important fix for multi-day events:
+    // If the event extends beyond the visible END_HOUR on this particular day,
+    // clamp the slice end to END_HOUR so the editor reflects the rendered block.
     const sliceStart = new Date(Math.max(e.start.getTime(), startOfDay.getTime()));
-    const sliceEnd = new Date(Math.min(e.end.getTime(), endOfDay.getTime()));
+    let sliceEnd = new Date(Math.min(e.end.getTime(), endOfDay.getTime()));
 
-    setEditStart(format(sliceStart, "HH:mm"));
-    setEditEnd(format(sliceEnd, "HH:mm"));
+    // Clamp to visible window (START_HOUR..END_HOUR) so a click on a mid-day slice
+    // for a multi-day event produces the correct time range within the grid.
+    const visibleStart = new Date(baseDate); visibleStart.setHours(START_HOUR, 0, 0, 0);
+    const visibleEnd = new Date(baseDate); visibleEnd.setHours(END_HOUR, 0, 0, 0);
+    const clampedStart = new Date(Math.max(sliceStart.getTime(), visibleStart.getTime()));
+    const clampedEnd = new Date(Math.min(sliceEnd.getTime(), visibleEnd.getTime()));
+    // Ensure non-empty range for UI; if equal or reversed, nudge end by 30 minutes
+    if (clampedEnd.getTime() <= clampedStart.getTime()) {
+      clampedEnd.setTime(clampedStart.getTime() + 30 * 60 * 1000);
+    }
+
+    setEditStart(format(clampedStart, "HH:mm"));
+    setEditEnd(format(clampedEnd, "HH:mm"));
     setEditLocation(e.description ?? "");
     setEditParticipants(e.participants.join(", "));
   }
 
   function saveEdit() {
     if (!editingId) return;
-    const start = new Date(editDate + "T" + editStart);
-    const end = new Date(editDate + "T" + editEnd);
+    const start = new Date(editStartDate + "T" + editStart);
+    const end = new Date(editEndDate + "T" + editEnd);
+
+    if (end.getTime() < start.getTime()) {
+      end.setTime(start.getTime() + 30 * 60 * 1000);
+    }
+
     setEventList(prev =>
       prev.map(ev =>
-        ev.id === editingId
+        ev.id === editingId.split("-")[0] // support slice keys like "id-YYYY-MM-DD"
           ? {
               ...ev,
               title: editTitle || "Untitled",
@@ -313,9 +350,17 @@ export default function DashboardPage() {
 
   // create new event handler
   function addNewEvent() {
-    const startDate = new Date(draftDate + "T" + draftStart);
-    const endDate = new Date(draftDate + "T" + draftEnd);
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
+    // Compose start and end from separate date + time fields
+    const startDateTime = new Date(draftStartDate + "T" + draftStart);
+    const endDateTime = new Date(draftEndDate + "T" + draftEnd);
+
+    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) return;
+
+    // Ensure end >= start; if not, normalize to at least 30 minutes after start
+    if (endDateTime.getTime() < startDateTime.getTime()) {
+      endDateTime.setTime(startDateTime.getTime() + 30 * 60 * 1000);
+    }
+
     const id = "usr-" + Math.random().toString(36).slice(2, 8);
     const participants = draftParticipants
       .split(",")
@@ -329,8 +374,8 @@ export default function DashboardPage() {
         title: draftTitle || "Untitled",
         emoji: "📌",
         description: draftLocation || undefined,
-        start: startDate,
-        end: endDate,
+        start: startDateTime,
+        end: endDateTime,
         participants,
       },
     ]);
@@ -404,7 +449,10 @@ export default function DashboardPage() {
     // Ignore clicks that would fall completely outside the grid (defensive)
     if (topPx < 0 || topPx >= GRID_PX) return;
 
-    setDraftDate(format(date, "yyyy-MM-dd"));
+    // Default to same-day start/end; user can expand via end date
+    const dayIso = format(date, "yyyy-MM-dd");
+    setDraftStartDate(dayIso);
+    setDraftEndDate(dayIso);
     setDraftStart(format(base, "HH:mm"));
     setDraftEnd(format(end, "HH:mm"));
     setDraftTitle("");
@@ -537,18 +585,45 @@ export default function DashboardPage() {
       <div className="rounded-xl border bg-card/90 p-4 shadow-sm">
         <div className="mb-3 text-sm font-semibold">Create Event</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Start/End Dates */}
           <div className="flex items-center gap-2">
             <CalendarIcon className="size-4 text-muted-foreground" />
             <input
               type="date"
               className="w-full rounded-md border px-3 py-2 text-sm bg-white"
-              value={draftDate}
-              onChange={(e) => setDraftDate(e.target.value)}
+              value={draftStartDate}
+              onChange={(e) => {
+                const nextStart = e.target.value;
+                setDraftStartDate(nextStart);
+                // Ensure End Date is never before Start Date
+                if (draftEndDate && nextStart && draftEndDate < nextStart) {
+                  setDraftEndDate(nextStart);
+                }
+              }}
             />
           </div>
           <div className="flex items-center gap-2">
+            <CalendarIcon className="size-4 text-muted-foreground" />
+            <input
+              type="date"
+              className="w-full rounded-md border px-3 py-2 text-sm bg-white"
+              value={draftEndDate}
+              min={draftStartDate || undefined}
+              onChange={(e) => {
+                const nextEnd = e.target.value;
+                // If user picks a date before start, clamp to start
+                if (draftStartDate && nextEnd && nextEnd < draftStartDate) {
+                  setDraftEndDate(draftStartDate);
+                } else {
+                  setDraftEndDate(nextEnd);
+                }
+              }}
+            />
+          </div>
+
+          {/* Times */}
+          <div className="flex items-center gap-2">
             <Clock className="size-4 text-muted-foreground" />
-            {/* Constrain and allow the two time inputs to share space without overflowing */}
             <div className="flex w-full items-center gap-2 min-w-0">
               <div className="flex-1 min-w-0">
                 <input
@@ -569,6 +644,8 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Title */}
           <div className="sm:col-span-2">
             <input
               type="text"
@@ -578,6 +655,8 @@ export default function DashboardPage() {
               onChange={(e) => setDraftTitle(e.target.value)}
             />
           </div>
+
+          {/* Location */}
           <div className="sm:col-span-2 flex items-center gap-2">
             <MapPin className="size-4 text-muted-foreground" />
             <input
@@ -588,6 +667,8 @@ export default function DashboardPage() {
               onChange={(e) => setDraftLocation(e.target.value)}
             />
           </div>
+
+          {/* Participants */}
           <div className="sm:col-span-2">
             <input
               type="text"
@@ -694,9 +775,32 @@ export default function DashboardPage() {
               </button>
             </div>
             {/* Dialog trigger */}
-            <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+            <Dialog
+              open={openDialog}
+              onOpenChange={(next) => {
+                // Prevent edit popover interactions from opening the Create Event dialog.
+                // Only allow opening when explicitly triggered by the "New" button or openCreateAt().
+                if (next === false) {
+                  setOpenDialog(false);
+                } else {
+                  // Only open if the currently active element is the New button or we explicitly asked to open.
+                  const active = typeof window !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+                  const isNewButton = !!active?.closest?.('[data-open="new-event"]');
+                  if (isNewButton) {
+                    setOpenDialog(true);
+                  } else {
+                    // ignore unintended open requests that can happen from focus shifts
+                    // keep current state (do nothing)
+                  }
+                }
+              }}
+            >
               <DialogTrigger asChild>
-                <Button className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm" aria-label="Add item">
+                <Button
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm"
+                  aria-label="Add item"
+                  data-open="new-event"
+                >
                   <Plus className="size-4" aria-hidden="true" />
                   New
                 </Button>
@@ -728,44 +832,60 @@ export default function DashboardPage() {
                       />
                     </div>
 
+                    {/* Dates row */}
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div className="grid gap-2">
-                        <label htmlFor="date" className="text-sm font-medium">Date</label>
+                        <label className="text-sm font-medium">Start Date</label>
                         <Input
-                          id="date"
                           type="date"
-                          value={draftDate}
-                          onChange={(e) => setDraftDate(e.target.value)}
+                          value={draftStartDate}
+                          onChange={(e) => {
+                            const nextStart = e.target.value;
+                            setDraftStartDate(nextStart);
+                            if (draftEndDate && nextStart && draftEndDate < nextStart) {
+                              setDraftEndDate(nextStart);
+                            }
+                          }}
                         />
                       </div>
                       <div className="grid gap-2">
-                        <span className="text-sm font-medium">Time</span>
-                        {/*
-                          Prevent overflow and keep the native time picker icons fully visible.
-                          Strategy:
-                          - Use a min-w-0 row so flex children can shrink without clipping.
-                          - Wrap each input in a relative group with explicit padding-right to reserve space for the icon (varies by browser).
-                          - Add pr-8 and appearance-none on the input to avoid overlap and clipping.
-                          - Keep "to" label from shrinking.
-                        */}
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="relative flex-1 min-w-0">
-                            <Input
-                              type="time"
-                              value={draftStart}
-                              onChange={(e) => setDraftStart(e.target.value)}
-                              className="w-full min-w-0 pr-8 appearance-none"
-                            />
-                          </div>
-                          <span className="shrink-0 text-xs text-muted-foreground">to</span>
-                          <div className="relative flex-1 min-w-0">
-                            <Input
-                              type="time"
-                              value={draftEnd}
-                              onChange={(e) => setDraftEnd(e.target.value)}
-                              className="w-full min-w-0 pr-8 appearance-none"
-                            />
-                          </div>
+                        <label className="text-sm font-medium">End Date</label>
+                        <Input
+                          type="date"
+                          value={draftEndDate}
+                          min={draftStartDate || undefined}
+                          onChange={(e) => {
+                            const nextEnd = e.target.value;
+                            if (draftStartDate && nextEnd && nextEnd < draftStartDate) {
+                              setDraftEndDate(draftStartDate);
+                            } else {
+                              setDraftEndDate(nextEnd);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Time row (full width) */}
+                    <div className="grid gap-2">
+                      <span className="text-sm font-medium">Time</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="relative flex-1 min-w-0">
+                          <Input
+                            type="time"
+                            value={draftStart}
+                            onChange={(e) => setDraftStart(e.target.value)}
+                            className="w-full min-w-0 pr-8 appearance-none"
+                          />
+                        </div>
+                        <span className="shrink-0 text-xs text-muted-foreground">to</span>
+                        <div className="relative flex-1 min-w-0">
+                          <Input
+                            type="time"
+                            value={draftEnd}
+                            onChange={(e) => setDraftEnd(e.target.value)}
+                            className="w-full min-w-0 pr-8 appearance-none"
+                          />
                         </div>
                       </div>
                     </div>
@@ -959,9 +1079,43 @@ export default function DashboardPage() {
                                 }}
                                 onMouseLeave={() => setHoverPreview(null)}
                                 onClick={(e) => {
+                                  // Prioritize editing an existing event over creating a new one.
                                   const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
                                   const rawY = e.clientY - rect.top;
                                   const y = Math.max(0, Math.min(GRID_PX - 1, rawY));
+
+                                  // Determine the clicked time within the visible window
+                                  const pct = y / GRID_PX;
+                                  const minutesFromStart = Math.round(pct * TOTAL_MIN);
+                                  const clickedMinutes = Math.max(START_HOUR * 60, Math.min(END_HOUR * 60, START_HOUR * 60 + minutesFromStart));
+
+                                  // Find events for the day and check if click is within any event's vertical bounds
+                                  const dayEvents = mergedEvents.filter((ev) => {
+                                    const dayStartTs = new Date(d.date).setHours(0, 0, 0, 0);
+                                    const dayEndTs = new Date(d.date).setHours(23, 59, 59, 999);
+                                    const eStartTs = ev.start.getTime();
+                                    const eEndTs = ev.end.getTime();
+                                    return !(eEndTs < dayStartTs || eStartTs > dayEndTs);
+                                  });
+
+                                  // Compute block top/bottom (in minutes from START_HOUR) for each event slice
+                                  const hit = dayEvents.find((ev) => {
+                                    const dayStart = new Date(d.date); dayStart.setHours(0,0,0,0);
+                                    const dayEnd = new Date(d.date); dayEnd.setHours(23,59,59,999);
+                                    const start = new Date(Math.max(ev.start.getTime(), dayStart.getTime()));
+                                    const end = new Date(Math.min(ev.end.getTime(), dayEnd.getTime()));
+                                    const startMin = Math.max(START_HOUR * 60, minutesFromMidnight(start));
+                                    const endMin = Math.min(END_HOUR * 60, minutesFromMidnight(end));
+                                    return clickedMinutes >= startMin && clickedMinutes <= endMin;
+                                  });
+
+                                  if (hit) {
+                                    // Open editor for the hit event
+                                    openEditor(hit);
+                                    return;
+                                  }
+
+                                  // Otherwise, fall back to create-at-click
                                   openCreateAt(d.date, y);
                                 }}
                                 role="button"
@@ -979,6 +1133,11 @@ export default function DashboardPage() {
                                 ) : null}
 
                                 {(() => {
+                                  // When an editor popover is opened, ensure the Create Event dialog stays closed.
+                                  if (openDialog && editingId) {
+                                    // close if somehow open to avoid the bug where dialog appears while editing
+                                    setOpenDialog(false);
+                                  }
                                   const dayEvents = mergedEvents.filter((e) => {
                                     const dayStartTs = new Date(d.date).setHours(0, 0, 0, 0);
                                     const dayEndTs = new Date(d.date).setHours(23, 59, 59, 999);
@@ -990,12 +1149,16 @@ export default function DashboardPage() {
                                   return dayEvents.map((e, idx) => (
                                     <Popover
                                       key={`pop-${e.id}-${dayKey(d.date)}`}
-                                      open={editingId === e.id}
-                                      onOpenChange={(o) => (o ? openEditor(e) : setEditingId(null))}
+                                      open={editingId === `${e.id}-${dayKey(d.date)}`}
+                                      onOpenChange={(o) => {
+                                        if (!o) setEditingId(null);
+                                      }}
                                     >
                                       <PopoverTrigger asChild>
                                         <div
-                                          className={`timegrid-event cursor-pointer ${["event-green","event-purple","event-orange","event-blue"][idx % 4]}`}
+                                          role="button"
+                                          tabIndex={0}
+                                          className={`timegrid-event cursor-pointer text-left ${["event-green","event-purple","event-orange","event-blue"][idx % 4]}`}
                                           style={{
                                             ...eventBlockStyle(e, d.date),
                                             position: "absolute",
@@ -1008,7 +1171,37 @@ export default function DashboardPage() {
                                             right: "6px" /* preserve built-in gutter while honoring overflow hidden */
                                           }}
                                           data-col-date={format(d.date, "yyyy-MM-dd")}
-                                          onClick={() => openEditor(e)}
+                                          onMouseDown={(ev) => {
+                                            ev.stopPropagation();
+                                          }}
+                                          onClick={(ev) => {
+                                            ev.stopPropagation();
+                                            const sliceKey = `${e.id}-${dayKey(d.date)}`;
+                                            const target = ev.currentTarget as HTMLElement | null;
+                                            requestAnimationFrame(() => {
+                                              setEditingId(sliceKey);
+                                              if (target && typeof target.focus === "function") {
+                                                try { target.focus(); } catch {}
+                                              }
+                                              openEditor(e);
+                                            });
+                                          }}
+                                          onKeyDown={(ev) => {
+                                            if (ev.key === "Enter" || ev.key === " ") {
+                                              ev.preventDefault();
+                                              ev.stopPropagation();
+                                              const sliceKey = `${e.id}-${dayKey(d.date)}`;
+                                              const target = ev.currentTarget as HTMLElement | null;
+                                              requestAnimationFrame(() => {
+                                                setEditingId(sliceKey);
+                                                if (target && typeof target.focus === "function") {
+                                                  try { target.focus(); } catch {}
+                                                }
+                                                openEditor(e);
+                                              });
+                                            }
+                                          }}
+                                          aria-label={`Edit event ${e.title}`}
                                         >
                                           <div className="title-row">
                                             <div className="title">
@@ -1050,7 +1243,12 @@ export default function DashboardPage() {
                                           </div>
                                         </div>
                                       </PopoverTrigger>
-                                      <PopoverContent className="w-80" align="start" sideOffset={8}>
+                                      <PopoverContent
+                                        className="w-80"
+                                        align="start"
+                                        sideOffset={8}
+                                        onOpenAutoFocus={(e)=>e.preventDefault()}
+                                      >
                                         <div className="grid gap-3">
                                           <div className="space-y-1">
                                             <h4 className="text-sm font-medium leading-none">Edit Event</h4>
@@ -1062,10 +1260,37 @@ export default function DashboardPage() {
                                           </div>
                                           <div className="grid sm:grid-cols-2 gap-3">
                                             <div className="grid gap-2">
-                                              <label className="text-sm font-medium">Date</label>
-                                              <Input type="date" value={editDate} onChange={(e)=>setEditDate(e.target.value)} />
+                                              <label className="text-sm font-medium">Start Date</label>
+                                              <Input
+                                                type="date"
+                                                value={editStartDate}
+                                                onChange={(e)=>{
+                                                  const nextStart = e.target.value;
+                                                  setEditStartDate(nextStart);
+                                                  // Ensure edit end date is not before start
+                                                  if (editEndDate && nextStart && editEndDate < nextStart) {
+                                                    setEditEndDate(nextStart);
+                                                  }
+                                                }}
+                                              />
                                             </div>
                                             <div className="grid gap-2">
+                                              <label className="text-sm font-medium">End Date</label>
+                                              <Input
+                                                type="date"
+                                                value={editEndDate}
+                                                min={editStartDate || undefined}
+                                                onChange={(e)=>{
+                                                  const nextEnd = e.target.value;
+                                                  if (editStartDate && nextEnd && nextEnd < editStartDate) {
+                                                    setEditEndDate(editStartDate);
+                                                  } else {
+                                                    setEditEndDate(nextEnd);
+                                                  }
+                                                }}
+                                              />
+                                            </div>
+                                            <div className="grid gap-2 sm:col-span-2">
                                               <span className="text-sm font-medium">Time</span>
                                               <div className="flex items-center gap-2 min-w-0">
                                                 <div className="flex-1 min-w-0">
@@ -1171,9 +1396,38 @@ export default function DashboardPage() {
                         }}
                         onMouseLeave={() => setHoverPreview(null)}
                         onClick={(e) => {
+                          // Prioritize editing an existing event over creating a new one.
                           const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
                           const rawY = e.clientY - rect.top;
                           const y = Math.max(0, Math.min(GRID_PX - 1, rawY));
+
+                          // Determine clicked time in minutes from START_HOUR
+                          const pct = y / GRID_PX;
+                          const minutesFromStart = Math.round(pct * TOTAL_MIN);
+                          const clickedMinutes = Math.max(START_HOUR * 60, Math.min(END_HOUR * 60, START_HOUR * 60 + minutesFromStart));
+
+                          // Day view events intersecting selectedDay
+                          const dayEvents = mergedEvents.filter((ev) => {
+                            const ds = new Date(selectedDay); ds.setHours(0,0,0,0);
+                            const de = new Date(selectedDay); de.setHours(23,59,59,999);
+                            return !(ev.end.getTime() < ds.getTime() || ev.start.getTime() > de.getTime());
+                          });
+
+                          const hit = dayEvents.find((ev) => {
+                            const dayStart = new Date(selectedDay); dayStart.setHours(0,0,0,0);
+                            const dayEnd = new Date(selectedDay); dayEnd.setHours(23,59,59,999);
+                            const start = new Date(Math.max(ev.start.getTime(), dayStart.getTime()));
+                            const end = new Date(Math.min(ev.end.getTime(), dayEnd.getTime()));
+                            const startMin = Math.max(START_HOUR * 60, minutesFromMidnight(start));
+                            const endMin = Math.min(END_HOUR * 60, minutesFromMidnight(end));
+                            return clickedMinutes >= startMin && clickedMinutes <= endMin;
+                          });
+
+                          if (hit) {
+                            openEditor(hit);
+                            return;
+                          }
+
                           openCreateAt(selectedDay, y);
                         }}
                         role="button"
@@ -1198,6 +1452,10 @@ export default function DashboardPage() {
                         ) : null}
 
                         {(() => {
+                          // When an editor popover is opened, ensure the Create Event dialog stays closed.
+                          if (openDialog && editingId) {
+                            setOpenDialog(false);
+                          }
                           const dayEvents = mergedEvents.filter((e) => {
                             const ds = new Date(selectedDay); ds.setHours(0,0,0,0);
                             const de = new Date(selectedDay); de.setHours(23,59,59,999);
@@ -1205,36 +1463,161 @@ export default function DashboardPage() {
                           });
                           const positions = layoutOverlaps(selectedDay, dayEvents);
                           return dayEvents.map((e, idx) => (
-                            <div
-                              key={`${e.id}-${idx}`}
-                              className={`timegrid-event ${["event-green","event-purple","event-orange","event-blue"][idx % 4]}`}
-                              style={{
-                                ...eventBlockStyle(e, selectedDay),
-                                position: "absolute",
-                                left: positions[e.id]?.left ?? "0%",
-                                width: positions[e.id]?.width ?? "100%"
+                            <Popover
+                              key={`pop-day-${e.id}-${dayKey(selectedDay)}`}
+                              open={editingId === `${e.id}-${dayKey(selectedDay)}`}
+                              onOpenChange={(o) => {
+                                if (!o) setEditingId(null);
                               }}
                             >
-                              <div className="title-row">
-                                <div className="title">
-                                  <span className="mr-1">{e.emoji}</span>
-                                  {e.title}
+                              <PopoverTrigger asChild>
+                                <div
+                                  role="button"
+                                  tabIndex={0}
+                                  className={`timegrid-event cursor-pointer text-left ${["event-green","event-purple","event-orange","event-blue"][idx % 4]}`}
+                                  style={{
+                                    ...eventBlockStyle(e, selectedDay),
+                                    position: "absolute",
+                                    left: positions[e.id]?.left ?? "0%",
+                                    width: positions[e.id]?.width ?? "100%"
+                                  }}
+                                  data-col-date={format(selectedDay, "yyyy-MM-dd")}
+                                  onMouseDown={(ev) => {
+                                    ev.stopPropagation();
+                                  }}
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    const sliceKey = `${e.id}-${dayKey(selectedDay)}`;
+                                    const target = ev.currentTarget as HTMLElement | null;
+                                    requestAnimationFrame(() => {
+                                      setEditingId(sliceKey);
+                                      if (target && typeof target.focus === "function") {
+                                        try { target.focus(); } catch {}
+                                      }
+                                      openEditor(e);
+                                    });
+                                  }}
+                                  onKeyDown={(ev) => {
+                                    if (ev.key === "Enter" || ev.key === " ") {
+                                      ev.preventDefault();
+                                      ev.stopPropagation();
+                                      const sliceKey = `${e.id}-${dayKey(selectedDay)}`;
+                                      const target = ev.currentTarget as HTMLElement | null;
+                                      requestAnimationFrame(() => {
+                                        setEditingId(sliceKey);
+                                        if (target && typeof target.focus === "function") {
+                                          try { target.focus(); } catch {}
+                                        }
+                                        openEditor(e);
+                                      });
+                                    }
+                                  }}
+                                  aria-label={`Edit event ${e.title}`}
+                                >
+                                  <div className="title-row">
+                                    <div className="title">
+                                      <span className="mr-1">{e.emoji}</span>
+                                      {e.title}
+                                    </div>
+                                  </div>
+                                  <div className="time">
+                                    {format(e.start, "p")} – {format(e.end, "p")}
+                                  </div>
+                                  {e.description ? (
+                                    <div className="desc">{e.description}</div>
+                                  ) : null}
+                                  <div className="chips">
+                                    {e.participants.map((p) => (
+                                      <span key={p} className="chip">
+                                        {p}
+                                      </span>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="time">
-                                {format(e.start, "p")} – {format(e.end, "p")}
-                              </div>
-                              {e.description ? (
-                                <div className="desc">{e.description}</div>
-                              ) : null}
-                              <div className="chips">
-                                {e.participants.map((p) => (
-                                  <span key={p} className="chip">
-                                    {p}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-80" align="start" sideOffset={8} onOpenAutoFocus={(e)=>e.preventDefault()}>
+                                <div className="grid gap-3">
+                                  <div className="space-y-1">
+                                    <h4 className="text-sm font-medium leading-none">Edit Event</h4>
+                                    <p className="text-xs text-muted-foreground">Update details and save.</p>
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Title</label>
+                                    <Input value={editTitle} onChange={(e)=>setEditTitle(e.target.value)} />
+                                  </div>
+                                  <div className="grid sm:grid-cols-2 gap-3">
+                                    <div className="grid gap-2">
+                                      <label className="text-sm font-medium">Start Date</label>
+                                      <Input
+                                        type="date"
+                                        value={editStartDate}
+                                        onChange={(e)=>{
+                                          const nextStart = e.target.value;
+                                          setEditStartDate(nextStart);
+                                          if (editEndDate && nextStart && editEndDate < nextStart) {
+                                            setEditEndDate(nextStart);
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <label className="text-sm font-medium">End Date</label>
+                                      <Input
+                                        type="date"
+                                        value={editEndDate}
+                                        min={editStartDate || undefined}
+                                        onChange={(e)=>{
+                                          const nextEnd = e.target.value;
+                                          if (editStartDate && nextEnd && nextEnd < editStartDate) {
+                                            setEditEndDate(editStartDate);
+                                          } else {
+                                            setEditEndDate(nextEnd);
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="grid gap-2 sm:col-span-2">
+                                      <span className="text-sm font-medium">Time</span>
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <div className="flex-1 min-w-0">
+                                          <Input type="time" value={editStart} onChange={(e)=>setEditStart(e.target.value)} className="w-full min-w-0 pr-8 appearance-none" />
+                                        </div>
+                                        <span className="shrink-0 text-xs text-muted-foreground">to</span>
+                                        <div className="flex-1 min-w-0">
+                                          <Input type="time" value={editEnd} onChange={(e)=>setEditEnd(e.target.value)} className="w-full min-w-0 pr-8 appearance-none" />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Location / Description</label>
+                                    <Input value={editLocation} onChange={(e)=>setEditLocation(e.target.value)} placeholder="Optional" />
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <label className="text-sm font-medium">Participants</label>
+                                    <Input value={editParticipants} onChange={(e)=>setEditParticipants(e.target.value)} placeholder="Comma separated" />
+                                  </div>
+                                  <div className="flex items-center justify-between pt-1">
+                                    <button
+                                      type="button"
+                                      onClick={deleteEvent}
+                                      className="inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+                                      aria-label="Delete event"
+                                    >
+                                      <Trash2 className="size-4" /> Delete
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={saveEdit}
+                                      className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
+                                      aria-label="Save event"
+                                    >
+                                      <Save className="size-4" /> Save
+                                    </button>
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           ));
                         })()}
                       </div>
