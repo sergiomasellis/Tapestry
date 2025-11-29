@@ -26,11 +26,14 @@ Quick Start
 5) Open docs:
    http://localhost:8000/docs
 
-Environment
-- .env
-  DATABASE_URL=sqlite:///./data.db
-  SECRET_KEY=dev-secret-change
-  ACCESS_TOKEN_EXPIRE_MINUTES=60
+Environment Variables
+Create a `.env` file (copy from `.env.example`):
+- `DATABASE_URL` - Database connection string (default: `sqlite:///./data.db`)
+- `SECRET_KEY` - **REQUIRED**: Strong secret key for JWT tokens (generate with: `python -c "import secrets; print(secrets.token_urlsafe(32))"`)
+- `ACCESS_TOKEN_EXPIRE_MINUTES` - JWT token expiration in minutes (default: 10080 = 7 days)
+- `CORS_ORIGINS` - Comma-separated list of allowed CORS origins (default: `http://localhost:3000,http://localhost:8000`)
+
+**Important**: Never commit `.env` files to version control. Always use `.env.example` as a template.
 
 API Overview (per PRD)
 - Users: CRUD

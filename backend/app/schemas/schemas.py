@@ -18,7 +18,7 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str
+    password: Optional[str] = None  # Optional for children, required for parents
     family_id: Optional[int] = None
 
 
@@ -41,6 +41,11 @@ class UserOut(UserBase):
 class FamilyCreate(BaseModel):
     name: str
     admin_password: str
+
+
+class FamilyUpdate(BaseModel):
+    name: Optional[str] = None
+    admin_password: Optional[str] = None
 
 
 class FamilyInvite(BaseModel):
@@ -72,6 +77,13 @@ class AdminLoginRequest(BaseModel):
     admin_password: str
 
 
+class SignupRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role: Literal["parent", "child"] = "parent"
+
+
 # Events
 class EventBase(BaseModel):
     family_id: int
@@ -86,6 +98,16 @@ class EventBase(BaseModel):
 
 class EventCreate(EventBase):
     pass
+
+
+class EventUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    emoji: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    source: Optional[Literal["ical", "google", "alexa", "manual"]] = None
+    source_id: Optional[str] = None
 
 
 class EventOut(EventBase):
@@ -103,9 +125,21 @@ class ChoreBase(BaseModel):
     description: Optional[str] = None
     emoji: Optional[str] = None
     point_value: int
-    assigned_to: Optional[int] = None
+    assigned_to: Optional[int] = None  # Legacy single assignee
+    assigned_to_ids: Optional[str] = None  # Comma-separated user IDs for multiple assignees
+    is_group_chore: bool = True  # True = one completion for all, False = each person completes individually
     completed: bool = False
+    completed_by_ids: Optional[str] = None  # For individual chores: who has completed
     week_start: date
+    # Recurring fields
+    is_recurring: bool = False
+    recurrence_type: Optional[Literal["daily", "weekly", "monthly"]] = None
+    recurrence_interval: Optional[int] = None  # every N days/weeks/months
+    recurrence_count: Optional[int] = None  # times per day (e.g., 2x per day)
+    recurrence_days: Optional[str] = None  # comma-separated days of week (0-6) for weekly
+    recurrence_time_of_day: Optional[Literal["morning", "afternoon", "evening", "anytime"]] = None
+    recurrence_end_date: Optional[date] = None
+    parent_chore_id: Optional[int] = None
 
 
 class ChoreCreate(ChoreBase):
@@ -118,7 +152,19 @@ class ChoreUpdate(BaseModel):
     emoji: Optional[str] = None
     point_value: Optional[int] = None
     assigned_to: Optional[int] = None
+    assigned_to_ids: Optional[str] = None
+    is_group_chore: Optional[bool] = None
     completed: Optional[bool] = None
+    completed_by_ids: Optional[str] = None
+    # Recurring fields
+    is_recurring: Optional[bool] = None
+    recurrence_type: Optional[Literal["daily", "weekly", "monthly"]] = None
+    recurrence_interval: Optional[int] = None
+    recurrence_count: Optional[int] = None
+    recurrence_days: Optional[str] = None
+    recurrence_time_of_day: Optional[Literal["morning", "afternoon", "evening", "anytime"]] = None
+    recurrence_end_date: Optional[date] = None
+    parent_chore_id: Optional[int] = None
 
 
 class ChoreOut(ChoreBase):
@@ -139,6 +185,29 @@ class PointCreate(BaseModel):
 class PointOut(PointCreate):
     id: int
     awarded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Leaderboard
+class CompletedChoreOut(BaseModel):
+    id: int
+    title: str
+    emoji: Optional[str] = None
+    point_value: int
+    awarded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LeaderboardEntry(BaseModel):
+    user_id: int
+    name: str
+    icon_emoji: Optional[str] = None
+    total_points: int
+    completed_chores: List[CompletedChoreOut]
 
     class Config:
         from_attributes = True

@@ -1,0 +1,45 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: tapestry-backend-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data.db
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production-min32chars}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      - ENVIRONMENT=development
+      - LOG_FORMAT=text
+      - RATE_LIMIT_ENABLED=false
+    volumes:
+      - ./backend:/app
+      - backend-venv:/app/.venv
+    restart: unless-stopped
+    command: ["uv", "run", "uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: tapestry-frontend-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      # API URL is auto-detected based on browser hostname (see src/lib/api.ts)
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    restart: unless-stopped
+    command: ["pnpm", "dev"]
+
+volumes:
+  backend-venv:
+
+
+

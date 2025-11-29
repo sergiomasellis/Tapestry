@@ -1,7 +1,6 @@
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
-    Column,
     Date,
     DateTime,
     ForeignKey,
@@ -90,10 +89,23 @@ class Chore(Base):
     description: Mapped[str | None] = mapped_column(Text)
     emoji: Mapped[str | None] = mapped_column(String)
     point_value: Mapped[int] = mapped_column(Integer, nullable=False)
-    assigned_to: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
-    completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    assigned_to: Mapped[int | None] = mapped_column(ForeignKey("users.id"))  # Legacy single assignee
+    assigned_to_ids: Mapped[str | None] = mapped_column(Text)  # Comma-separated user IDs for multiple assignees
+    is_group_chore: Mapped[bool] = mapped_column(Boolean, default=True)  # True = one completion for all, False = each person completes individually
+    completed: Mapped[bool] = mapped_column(Boolean, default=False)  # For group chores or when all individuals complete
+    completed_by_ids: Mapped[str | None] = mapped_column(Text)  # For individual chores: comma-separated IDs of who completed
     week_start: Mapped[datetime] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Recurring chore fields
+    is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
+    recurrence_type: Mapped[str | None] = mapped_column(String)  # daily, weekly, monthly
+    recurrence_interval: Mapped[int | None] = mapped_column(Integer)  # every N days/weeks/months (default 1)
+    recurrence_count: Mapped[int | None] = mapped_column(Integer)  # times per day (e.g., 2x per day, default 1)
+    recurrence_days: Mapped[str | None] = mapped_column(Text)  # comma-separated days of week (0-6) for weekly
+    recurrence_time_of_day: Mapped[str | None] = mapped_column(String)  # morning, afternoon, evening, anytime
+    recurrence_end_date: Mapped[datetime | None] = mapped_column(Date)  # optional end date
+    parent_chore_id: Mapped[int | None] = mapped_column(ForeignKey("chores.id"))  # link to template for recurring instances
 
     family: Mapped["FamilyGroup"] = relationship("FamilyGroup", back_populates="chores")
     assignee: Mapped["User"] = relationship("User", back_populates="chores_assigned")
