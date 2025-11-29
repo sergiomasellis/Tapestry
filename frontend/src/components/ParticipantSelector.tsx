@@ -78,21 +78,28 @@ export function ParticipantSelector({
             selectedNames.map((name) => {
               const member = familyMembers.find((m) => m.name === name);
               return (
-                <Badge
-                  key={name}
-                  variant="secondary"
-                  className="flex items-center gap-1 pr-1"
-                >
-                  {member?.icon_emoji || getInitials(name)}
-                  <span className="truncate max-w-[80px]">{name}</span>
-                  <button
-                    type="button"
+                  <Badge
+                    key={name}
+                    variant="secondary"
+                    className="flex items-center gap-1 pr-1"
+                  >
+                    {member?.icon_emoji || getInitials(name)}
+                    <span className="truncate max-w-[80px]">{name}</span>
+                  <span
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => removeMember(name, e)}
-                    className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        removeMember(name, e as any);
+                      }
+                    }}
+                    className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
                     aria-label={`Remove ${name}`}
                   >
                     <X className="size-3" />
-                  </button>
+                  </span>
                 </Badge>
               );
             })

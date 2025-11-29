@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { EventItem, DragState, Event, EventCreate, EventUpdate } from "@/types";
 import { addDays } from "@/lib/date";
 import { apiFetch } from "@/lib/api";
@@ -43,6 +43,10 @@ export function useEvents(
   const [eventList, setEventList] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Ref to track current eventList for stable callbacks
+  const eventListRef = useRef(eventList);
+  eventListRef.current = eventList;
 
   // Fetch events from backend
   const fetchEvents = useCallback(async () => {
@@ -83,6 +87,7 @@ export function useEvents(
   }, [fetchEvents]);
 
   // Merged events with drag state applied for real-time preview
+  // Use individual dragState values as dependencies to prevent unnecessary recalculations
   const mergedEvents = useMemo(() => {
     if (!dragState) return eventList;
 
@@ -92,7 +97,7 @@ export function useEvents(
         const newEnd = new Date(ev.end);
 
         const h = Math.floor(dragState.startMinutes / 60);
-        const m = dragState.startMinutes % 60;
+        const m = Math.floor(dragState.startMinutes % 60);
         newStart.setHours(h, m, 0, 0);
         newEnd.setTime(newStart.getTime() + dragState.durationMinutes * 60000);
 
@@ -103,7 +108,13 @@ export function useEvents(
       }
       return ev;
     });
-  }, [eventList, dragState]);
+  }, [
+    eventList,
+    dragState?.id,
+    dragState?.startMinutes,
+    dragState?.durationMinutes,
+    dragState?.dayOffset,
+  ]);
 
   const addEvent = useCallback(
     async (event: Omit<EventItem, "id">): Promise<EventItem | null> => {
@@ -205,8 +216,8 @@ export function useEvents(
 
   const commitDrag = useCallback(
     async (drag: NonNullable<DragState>) => {
-      // Find the event being dragged
-      const event = eventList.find((ev) => ev.id === drag.id);
+      // Find the event being dragged (use ref for stable callback)
+      const event = eventListRef.current.find((ev) => ev.id === drag.id);
       if (!event) return;
 
       // Calculate new times
@@ -222,13 +233,23 @@ export function useEvents(
       const finalStart = addDays(newStart, drag.dayOffset);
       const finalEnd = addDays(newEnd, drag.dayOffset);
 
-      // Update the event via API
+      // Optimistically update the event list immediately (before API call)
+      // This prevents the event from snapping back to its original position
+      setEventList((prev) =>
+        prev.map((ev) =>
+          ev.id === drag.id
+            ? { ...ev, start: finalStart, end: finalEnd }
+            : ev
+        )
+      );
+
+      // Update the event via API (this will also update the list again with server response)
       await updateEvent(drag.id, {
         start: finalStart,
         end: finalEnd,
       });
     },
-    [eventList, updateEvent]
+    [updateEvent]
   );
 
   return {

@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import {
   CalendarDays,
@@ -94,10 +94,30 @@ function DashboardPageContent() {
   const { family, loading: familyLoading, createFamily, refetch: refetchFamily } = useFamily();
   const FAMILY_ID = family?.id;
 
-  // Initialize drag state as null (will be updated by useDragAndDrop)
-  const [dragState, setDragState] = useState<DragState>(null);
+  // Commit drag ref - will be set after useEvents is called
+  const commitDragRef = useRef<((drag: NonNullable<DragState>) => Promise<void>) | null>(null);
+  // Track which event is being dragged to prevent clicks during drag
+  const draggingEventIdRef = useRef<string | null>(null);
+  
+  const handleDragEnd = useCallback((drag: NonNullable<DragState>) => {
+    commitDragRef.current?.(drag);
+    // Clear the dragging event ID after a short delay
+    setTimeout(() => {
+      draggingEventIdRef.current = null;
+    }, 100);
+  }, []);
 
-  // Events management (needs dragState and FAMILY_ID)
+  // Drag and drop - call FIRST so we have dragState for useEvents
+  const { dragState, startDrag, isDragging, wasJustDragging } = useDragAndDrop({
+    onDragEnd: handleDragEnd,
+  });
+  
+  // Track which event is being dragged
+  useEffect(() => {
+    draggingEventIdRef.current = dragState?.id ?? null;
+  }, [dragState?.id]);
+
+  // Events management - uses dragState directly from hook (no sync needed)
   const {
     mergedEvents,
     setEventList,
@@ -109,15 +129,8 @@ function DashboardPageContent() {
     error: eventsError,
   } = useEvents(dragState, FAMILY_ID, weekStart);
 
-  // Drag and drop (needs commitDrag from useEvents)
-  const { dragState: dragStateFromHook, startDrag, isDragging } = useDragAndDrop({
-    onDragEnd: (drag) => commitDrag(drag),
-  });
-
-  // Sync dragState from hook to state
-  useEffect(() => {
-    setDragState(dragStateFromHook);
-  }, [dragStateFromHook]);
+  // Update the ref after useEvents provides commitDrag
+  commitDragRef.current = commitDrag;
 
   // Event editor state
   const editor = useEventEditor();
@@ -461,24 +474,28 @@ function DashboardPageContent() {
                 dragState?.id === e.id ? "none" : "transform 0.1s, box-shadow 0.1s",
             }}
             data-col-date={format(dayDate, "yyyy-MM-dd")}
-            onMouseDown={(ev) => {
-              ev.stopPropagation();
-              const startMin = minutesFromMidnight(e.start);
-              const endMin = minutesFromMidnight(e.end);
-              const duration = endMin - startMin;
-              const colWidth = ev.currentTarget.offsetWidth;
+                        onMouseDown={(ev) => {
+                              ev.stopPropagation();
+                              const startMin = minutesFromMidnight(e.start);
+                              const endMin = minutesFromMidnight(e.end);
+                              const duration = endMin - startMin;
+                              // Get the day column width (parent element), not the event block width
+                              const colWidth = (ev.currentTarget.parentElement?.offsetWidth ?? ev.currentTarget.offsetWidth);
 
-              startDrag(
-                e.id,
-                startMin,
-                duration,
-                ev.clientX,
-                ev.clientY,
-                colWidth
-              );
-            }}
+                              startDrag(
+                                e.id,
+                                startMin,
+                                duration,
+                                ev.clientX,
+                                ev.clientY,
+                                colWidth
+                              );
+                            }}
             onClick={(ev) => {
               ev.stopPropagation();
+              // Don't open editor if we're currently dragging this event or just finished dragging
+              if (draggingEventIdRef.current === e.id || isDragging || wasJustDragging()) return;
+              
               const target = ev.currentTarget as HTMLElement | null;
               requestAnimationFrame(() => {
                 editor.setEditingId(sliceKey);
@@ -494,6 +511,9 @@ function DashboardPageContent() {
               if (ev.key === "Enter" || ev.key === " ") {
                 ev.preventDefault();
                 ev.stopPropagation();
+                // Don't open editor if we're currently dragging this event or just finished dragging
+                if (draggingEventIdRef.current === e.id || isDragging || wasJustDragging()) return;
+                
                 const target = ev.currentTarget as HTMLElement | null;
                 requestAnimationFrame(() => {
                   editor.setEditingId(sliceKey);
