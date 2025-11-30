@@ -25,6 +25,8 @@ export function useDragAndDrop({ onDragEnd }: UseDragAndDropOptions) {
   const hasDraggedRef = useRef(false);
   // Track the last drag end time to prevent click from firing
   const lastDragEndRef = useRef(0);
+  // Track if we're currently processing a drag end to prevent duplicates
+  const processingDragEndRef = useRef(false);
 
   // Keep dragStateRef in sync with state
   dragStateRef.current = dragState;
@@ -70,22 +72,31 @@ export function useDragAndDrop({ onDragEnd }: UseDragAndDropOptions) {
     };
 
     const handleMouseUp = () => {
+      // Prevent duplicate calls
+      if (processingDragEndRef.current) {
+        console.log("⚠️ Duplicate handleMouseUp call prevented");
+        return;
+      }
+      
       // Use setState callback to ensure we get the LATEST state value
       // This avoids race conditions where mouseup fires before React re-renders
       setDragState((currentDrag) => {
-        if (currentDrag && hasDraggedRef.current) {
+        if (currentDrag && hasDraggedRef.current && !processingDragEndRef.current) {
+          processingDragEndRef.current = true;
           // Pass the drag state without the internal originalStartMinutes field
           const { originalStartMinutes, ...publicDragState } = currentDrag;
+          console.log("🖱️ Calling onDragEnd for:", publicDragState.id);
           onDragEndRef.current(publicDragState);
           lastDragEndRef.current = Date.now();
+          
+          // Reset processing flag after a short delay
+          setTimeout(() => {
+            processingDragEndRef.current = false;
+            hasDraggedRef.current = false;
+          }, 100);
         }
         return null; // Clear the drag state
       });
-      
-      // Reset after a short delay to allow click event to check
-      setTimeout(() => {
-        hasDraggedRef.current = false;
-      }, 100);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
