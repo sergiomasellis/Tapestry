@@ -210,16 +210,29 @@
   border-right: 2px solid var(--border);
   color: var(--foreground);
   font-weight: bold;
-  font-size: 12px;
+  font-size: 10px;
+}
+
+@media (min-width: 640px) {
+  .timegrid-rail {
+    font-size: 12px;
+  }
 }
 
 .timegrid-rail .hour {
   position: absolute;
   left: 0;
-  width: 56px;
+  width: 100%;
+  max-width: 56px;
   transform: translateY(-50%);
-  padding-right: 6px;
+  padding-right: 4px;
   text-align: right;
+}
+
+@media (min-width: 640px) {
+  .timegrid-rail .hour {
+    padding-right: 6px;
+  }
 }
 
 .timegrid-main {

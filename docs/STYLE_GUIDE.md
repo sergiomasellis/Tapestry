@@ -34,11 +34,108 @@ This document outlines the styling conventions for Tapestry, following a **Neo-B
 
 ### Colors
 
--   **Background**: `bg-background` (Off-white/Cream in light, Dark in dark)
--   **Card Background**: `bg-card` (White in light, Darker Gray in dark)
--   **Primary**: `bg-primary` (Vibrant Purple)
--   **Secondary**: `bg-secondary` (Vibrant Orange/Yellow)
--   **Text**: `text-foreground` (Black in light, White in dark)
+#### Core Semantic Colors
+
+| Token | Light Mode | Dark Mode | Usage |
+|-------|------------|-----------|-------|
+| `bg-background` | `oklch(0.98 0.01 80)` - Off-white/Cream | `oklch(0.1 0 0)` - Dark Gray | Main page background |
+| `text-foreground` | `oklch(0 0 0)` - Black | `oklch(1 0 0)` - White | Primary text color |
+| `bg-card` | `oklch(1 0 0)` - White | `oklch(0.15 0 0)` - Darker Gray | Card backgrounds |
+| `text-card-foreground` | `oklch(0 0 0)` - Black | `oklch(1 0 0)` - White | Text on cards |
+| `bg-popover` | `oklch(1 0 0)` - White | `oklch(0.15 0 0)` - Darker Gray | Popover/dropdown backgrounds |
+| `text-popover-foreground` | `oklch(0 0 0)` - Black | `oklch(1 0 0)` - White | Text in popovers |
+| `bg-input` | `oklch(1 0 0)` - White | `oklch(0.15 0 0)` - Darker Gray | Input field backgrounds |
+| `border-border` | `oklch(0 0 0)` - Black | `oklch(1 0 0)` - White | All borders (adapts to theme) |
+| `ring` | `oklch(0 0 0)` - Black | `oklch(1 0 0)` - White | Focus ring color |
+
+#### Primary Colors
+
+| Token | Light Mode | Dark Mode | Usage |
+|-------|------------|-----------|-------|
+| `bg-primary` | `oklch(0.6 0.2 270)` - Vibrant Purple | `oklch(0.7 0.2 270)` - Brighter Purple | Primary actions, CTAs, headers |
+| `text-primary-foreground` | `oklch(1 0 0)` - White | `oklch(0 0 0)` - Black | Text on primary backgrounds |
+
+#### Secondary Colors
+
+| Token | Light Mode | Dark Mode | Usage |
+|-------|------------|-----------|-------|
+| `bg-secondary` | `oklch(0.85 0.15 60)` - Vibrant Orange/Yellow | `oklch(0.85 0.15 60)` - Same | Secondary actions, highlights |
+| `text-secondary-foreground` | `oklch(0 0 0)` - Black | `oklch(0 0 0)` - Black | Text on secondary backgrounds |
+
+#### Accent Colors
+
+| Token | Light Mode | Dark Mode | Usage |
+|-------|------------|-----------|-------|
+| `bg-accent` | `oklch(0.7 0.2 150)` - Vibrant Green | `oklch(0.7 0.2 150)` - Same | Accent elements, success states |
+| `text-accent-foreground` | `oklch(0 0 0)` - Black | `oklch(0 0 0)` - Black | Text on accent backgrounds |
+
+#### Destructive Colors
+
+| Token | Light Mode | Dark Mode | Usage |
+|-------|------------|-----------|-------|
+| `bg-destructive` | `oklch(0.6 0.2 20)` - Vibrant Red | `oklch(0.7 0.2 20)` - Brighter Red | Delete actions, errors, warnings |
+| `text-destructive-foreground` | `oklch(1 0 0)` - White | `oklch(0 0 0)` - Black | Text on destructive backgrounds |
+
+#### Muted Colors
+
+| Token | Light Mode | Dark Mode | Usage |
+|-------|------------|-----------|-------|
+| `bg-muted` | `oklch(0.95 0 0)` - Light Gray | `oklch(0.2 0 0)` - Dark Gray | Subtle backgrounds, disabled states |
+| `text-muted-foreground` | `oklch(0.4 0 0)` - Medium Gray | `oklch(0.7 0 0)` - Light Gray | Secondary text, placeholders |
+
+#### Event Colors (High Saturation)
+
+These colors are used for calendar events and chore categorization:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--event-green` | `oklch(0.85 0.15 150)` - Vibrant Green | Green events/chores |
+| `--event-purple` | `oklch(0.8 0.15 300)` - Vibrant Purple | Purple events/chores |
+| `--event-orange` | `oklch(0.85 0.15 60)` - Vibrant Orange | Orange events/chores |
+| `--event-blue` | `oklch(0.8 0.15 250)` - Vibrant Blue | Blue events/chores |
+
+**Note**: Event colors are defined as CSS custom properties. Access them via `var(--event-green)`, etc.
+
+#### Chart Colors
+
+Used for data visualization and charts:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--chart-1` | `oklch(0.6 0.2 270)` - Purple | Primary chart color |
+| `--chart-2` | `oklch(0.85 0.15 60)` - Orange/Yellow | Secondary chart color |
+| `--chart-3` | `oklch(0.7 0.2 150)` - Green | Tertiary chart color |
+| `--chart-4` | `oklch(0.6 0.2 20)` - Red | Quaternary chart color |
+| `--chart-5` | `oklch(0.8 0.15 250)` - Blue | Quinary chart color |
+
+#### Sidebar Colors
+
+| Token | Light Mode | Dark Mode | Usage |
+|-------|------------|-----------|-------|
+| `bg-sidebar` | `oklch(0.98 0.01 80)` - Off-white/Cream | `oklch(0.1 0 0)` - Dark Gray | Sidebar background |
+| `text-sidebar-foreground` | `oklch(0 0 0)` - Black | `oklch(1 0 0)` - White | Sidebar text |
+| `bg-sidebar-primary` | `oklch(0.6 0.2 270)` - Purple | `oklch(0.7 0.2 270)` - Brighter Purple | Sidebar primary elements |
+| `text-sidebar-primary-foreground` | `oklch(1 0 0)` - White | `oklch(0 0 0)` - Black | Text on sidebar primary |
+| `bg-sidebar-accent` | `oklch(0.85 0.15 60)` - Orange/Yellow | `oklch(0.85 0.15 60)` - Same | Sidebar accent elements |
+| `text-sidebar-accent-foreground` | `oklch(0 0 0)` - Black | `oklch(0 0 0)` - Black | Text on sidebar accent |
+| `border-sidebar-border` | `oklch(0 0 0)` - Black | `oklch(1 0 0)` - White | Sidebar borders |
+| `ring-sidebar-ring` | `oklch(0 0 0)` - Black | `oklch(1 0 0)` - White | Sidebar focus rings |
+
+#### Shadow Color
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--shadow-color` | `#000000` - Black | Always black, even in dark mode, for contrast |
+
+### Color Usage Guidelines
+
+1. **Always use semantic tokens**: Never hardcode colors like `bg-white` or `text-black`. Use `bg-card` and `text-foreground` instead.
+
+2. **Dark mode compatibility**: All colors automatically adapt to dark mode when using semantic tokens. The `border-border` token switches from black to white, ensuring visibility in both themes.
+
+3. **High saturation**: Our palette uses high saturation values (0.15-0.2) for vibrant, bold colors that match the Neo-Brutalist aesthetic.
+
+4. **OKLCH color space**: Colors are defined in OKLCH for better perceptual uniformity and easier manipulation. Format: `oklch(lightness chroma hue)`.
 
 ## Component Patterns
 

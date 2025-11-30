@@ -7,12 +7,14 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { QRCodeLoginDialog } from "@/components/QRCodeLoginDialog";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [qrCodeDialogOpen, setQrCodeDialogOpen] = useState(false);
   const { login, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -48,8 +50,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <div className="w-full max-w-[400px]">
+    <div className="w-full max-w-[400px]">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-black uppercase tracking-tighter text-foreground">Tapestry</h1>
         </div>
@@ -107,7 +108,7 @@ export default function LoginPage() {
                   <label htmlFor="remember" className="text-sm font-bold cursor-pointer select-none text-foreground">Remember me</label>
                 </div>
                 <Link 
-                  href="#" 
+                  href="/auth/forgot-password" 
                   className="text-sm font-bold hover:underline decoration-2 underline-offset-2 text-foreground"
                 >
                   Recover password
@@ -136,13 +137,14 @@ export default function LoginPage() {
               <Button 
                 type="button" 
                 variant="outline"
+                onClick={() => setQrCodeDialogOpen(true)}
                 className="h-12 w-full border-2 border-border bg-transparent text-foreground text-lg font-bold shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none hover:bg-accent transition-all"
               >
                 Log in with QR code
               </Button>
 
               <p className="text-center text-sm font-bold text-foreground">
-                You don't have an account?{" "}
+                You don&apos;t have an account?{" "}
                 <Link href="/auth/signup" className="text-primary hover:underline decoration-2 underline-offset-2">
                   Create an account
                 </Link>
@@ -150,7 +152,8 @@ export default function LoginPage() {
             </form>
           </CardContent>
         </Card>
-      </div>
+      
+      <QRCodeLoginDialog open={qrCodeDialogOpen} onOpenChange={setQrCodeDialogOpen} />
     </div>
   );
 }

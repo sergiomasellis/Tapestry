@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export default function InvitePage() {
   return (
-    <div className="max-w-sm">
+    <div className="w-full max-w-sm">
       <Card>
         <CardHeader>
           <CardTitle>Invite Family Member</CardTitle>

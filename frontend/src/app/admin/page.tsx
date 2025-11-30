@@ -152,11 +152,11 @@ function AdminPageContent() {
       {/* Family Management Section */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
               <Users className="size-5" /> Family Management
             </CardTitle>
-            <Button onClick={handleCreateFamily} size="sm">
+            <Button onClick={handleCreateFamily} size="sm" className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               New Family
             </Button>
@@ -167,21 +167,22 @@ function AdminPageContent() {
             <p className="text-sm text-muted-foreground">Loading...</p>
           ) : family ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-lg">{family.name}</h3>
-                    <Badge variant="outline">Current Family</Badge>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-lg break-words">{family.name}</h3>
+                    <Badge variant="outline" className="shrink-0">Current Family</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Created {format(new Date(family.created_at), "MMMM d, yyyy")}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleEditFamily(family)}
+                    className="flex-1 sm:flex-initial"
                   >
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit
@@ -190,7 +191,7 @@ function AdminPageContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleDeleteFamily(family)}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-1 sm:flex-initial"
                   >
                     <AlertCircle className="mr-2 h-4 w-4" />
                     Delete
@@ -217,11 +218,11 @@ function AdminPageContent() {
       {family && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle className="flex items-center gap-2">
                 <UserPlus className="size-5" /> Family Members
               </CardTitle>
-              <Button onClick={handleAddMember} size="sm">
+              <Button onClick={handleAddMember} size="sm" className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Member
               </Button>
@@ -246,41 +247,42 @@ function AdminPageContent() {
                 {members.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex items-center gap-3 flex-1">
-                      <Avatar className="h-10 w-10">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Avatar className="h-10 w-10 shrink-0">
                         <AvatarImage src={member.profile_image_url || undefined} alt={member.name} />
                         <AvatarFallback>
                           {member.icon_emoji || member.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{member.name}</h3>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold break-words">{member.name}</h3>
                           {member.id === currentUser?.id && (
-                            <Badge variant="outline" className="text-xs">You</Badge>
+                            <Badge variant="outline" className="text-xs shrink-0">You</Badge>
                           )}
                           <Badge
                             variant={member.role === "parent" ? "default" : "secondary"}
-                            className="text-xs"
+                            className="text-xs shrink-0"
                           >
                             {member.role === "parent" ? "Parent" : "Child"}
                           </Badge>
                         </div>
                         {member.email && (
-                          <p className="text-sm text-muted-foreground">{member.email}</p>
+                          <p className="text-sm text-muted-foreground truncate">{member.email}</p>
                         )}
                         <p className="text-xs text-muted-foreground">
                           Joined {format(new Date(member.created_at), "MMMM d, yyyy")}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0 sm:ml-4">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleEditMember(member)}
+                        className="flex-1 sm:flex-initial"
                       >
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit
@@ -290,7 +292,7 @@ function AdminPageContent() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteMember(member)}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-1 sm:flex-initial"
                           disabled={deletingMember}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
@@ -318,7 +320,7 @@ function AdminPageContent() {
             <p className="text-sm text-muted-foreground">
               Manage roles and master admin password.
             </p>
-            <Button variant="outline" asChild>
+            <Button variant="outline" asChild className="w-full sm:w-auto">
               <Link href="#">Set Master Password</Link>
             </Button>
           </CardContent>
@@ -331,14 +333,14 @@ function AdminPageContent() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="flex flex-wrap gap-2">
-              <Button asChild>
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+              <Button asChild className="w-full sm:w-auto">
                 <Link href="#">Connect Google</Link>
               </Button>
-              <Button variant="secondary" asChild>
+              <Button variant="secondary" asChild className="w-full sm:w-auto">
                 <Link href="#">Add iCal</Link>
               </Button>
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild className="w-full sm:w-auto">
                 <Link href="#">Connect Alexa</Link>
               </Button>
             </div>

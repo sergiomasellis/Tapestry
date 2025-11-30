@@ -41,15 +41,15 @@ git rebase --exec "git commit --amend -s --no-edit" -i HEAD~N
 
 ### Prerequisites
 - Node.js 18+ (or the version required by Next.js)
-- pnpm (recommended) or npm/yarn
+- bun (recommended) or npm/yarn
 - Python 3.11+ (for backend)
 - uv (or pip) to manage Python dependencies
 
 ### Frontend setup
 ```bash
 cd frontend
-pnpm install
-pnpm dev
+bun install
+bun run dev
 ```
 Frontend runs with Next.js (app router). See [`frontend/README.md`](frontend/README.md) for details.
 
@@ -114,8 +114,8 @@ All commits must include the DCO sign-off line.
 ### Frontend quality checks
 ```bash
 cd frontend
-pnpm lint
-pnpm build
+bun run lint
+bun run build
 ```
 
 ### Backend quality checks

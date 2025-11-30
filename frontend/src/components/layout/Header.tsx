@@ -22,6 +22,14 @@ import {
 import { Menu, CalendarDays, ListTodo, Trophy, Shield, LogIn, UserPlus, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function Header() {
@@ -111,11 +119,66 @@ export function Header() {
           {isAuthenticated ? (
             <>
               <div className="flex md:hidden">
-                <Button variant="ghost" size="icon" asChild className="touch-manipulation">
-                  <Link href="/menu" aria-label="Open Menu">
-                    <Menu className="size-5" />
-                  </Link>
-                </Button>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="touch-manipulation" aria-label="Open Menu">
+                      <Menu className="size-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-64 sm:w-80">
+                    <SheetHeader>
+                      <SheetTitle>Navigation</SheetTitle>
+                    </SheetHeader>
+                    <nav className="flex flex-col gap-2 mt-6" role="navigation" aria-label="Mobile Navigation">
+                      <SheetClose asChild>
+                        <Link
+                          href="/dashboard"
+                          className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-accent transition-colors text-left"
+                        >
+                          <CalendarDays className="size-5" />
+                          <span>Dashboard</span>
+                        </Link>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Link
+                          href="/leaderboard"
+                          className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-accent transition-colors text-left"
+                        >
+                          <Trophy className="size-5" />
+                          <span>Leaderboard</span>
+                        </Link>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Link
+                          href="/chores"
+                          className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-accent transition-colors text-left"
+                        >
+                          <ListTodo className="size-5" />
+                          <span>Chores</span>
+                        </Link>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Link
+                          href="/admin"
+                          className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-accent transition-colors text-left"
+                        >
+                          <Shield className="size-5" />
+                          <span>Admin</span>
+                        </Link>
+                      </SheetClose>
+                      <Separator className="my-2" />
+                      <SheetClose asChild>
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-accent transition-colors text-left w-full"
+                        >
+                          <LogOut className="size-5" />
+                          <span>Logout</span>
+                        </button>
+                      </SheetClose>
+                    </nav>
+                  </SheetContent>
+                </Sheet>
               </div>
 
               <ThemeToggle />

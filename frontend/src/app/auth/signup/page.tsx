@@ -50,8 +50,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <div className="w-full max-w-[400px]">
+    <div className="w-full max-w-[400px]">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-black uppercase tracking-tighter text-foreground">Tapestry</h1>
         </div>
@@ -154,7 +153,6 @@ export default function SignupPage() {
             </form>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

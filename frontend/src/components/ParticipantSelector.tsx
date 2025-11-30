@@ -44,7 +44,7 @@ export function ParticipantSelector({
     }
   };
 
-  const removeMember = (name: string, e: React.MouseEvent) => {
+  const removeMember = (name: string, e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
     onChange(selectedNames.filter((n) => n !== name));
   };
@@ -92,7 +92,7 @@ export function ParticipantSelector({
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        removeMember(name, e as any);
+                        removeMember(name, e);
                       }
                     }}
                     className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"

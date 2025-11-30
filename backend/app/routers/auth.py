@@ -1,8 +1,9 @@
 import logging
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional
@@ -10,8 +11,12 @@ import bcrypt
 
 from ..config import settings
 from ..db.session import get_db
-from ..models.models import User, FamilyGroup
-from ..schemas.schemas import Token, LoginRequest, AdminLoginRequest, SignupRequest, UserOut
+from ..models.models import User, FamilyGroup, PasswordResetToken, QRCodeSession
+from ..schemas.schemas import (
+    Token, LoginRequest, AdminLoginRequest, SignupRequest, UserOut,
+    ForgotPasswordRequest, ResetPasswordRequest, Message,
+    QRCodeSessionResponse, QRCodeScanRequest, QRCodeStatusResponse
+)
 
 logger = logging.getLogger(__name__)
 
@@ -194,3 +199,171 @@ def admin_login(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     # Generate token with family admin subject
     access_token = create_access_token(data={"sub": f"family-admin:{fam.id}"})
     return Token(access_token=access_token)
+
+
+@router.post("/forgot-password", response_model=Message)
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Request a password reset token for the given email."""
+    user = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
+    
+    # Always return success message to prevent email enumeration
+    # In production, this would send an email with the reset link
+    if user:
+        # Generate a secure token
+        token = secrets.token_urlsafe(32)
+        
+        # Create reset token (expires in 1 hour)
+        reset_token = PasswordResetToken(
+            user_id=user.id,
+            token=token,
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+            used=False
+        )
+        db.add(reset_token)
+        db.commit()
+        
+        # In development, return the token in the response
+        # In production, this would be sent via email
+        logger.info(f"Password reset token generated for user {user.id}: {token}")
+    
+    return Message(message="If an account with that email exists, a password reset link has been sent.")
+
+
+@router.post("/reset-password", response_model=Message)
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Reset password using a valid reset token."""
+    # Find the reset token
+    reset_token = db.execute(
+        select(PasswordResetToken).where(
+            and_(
+                PasswordResetToken.token == payload.token,
+                PasswordResetToken.used == False,
+                PasswordResetToken.expires_at > datetime.utcnow()
+            )
+        )
+    ).scalar_one_or_none()
+    
+    if not reset_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+    
+    # Get the user
+    user = db.get(User, reset_token.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Update password
+    user.password_hash = get_password_hash(payload.new_password)
+    
+    # Mark token as used
+    reset_token.used = True
+    
+    # Invalidate any other unused tokens for this user
+    other_tokens = db.execute(
+        select(PasswordResetToken).where(
+            and_(
+                PasswordResetToken.user_id == user.id,
+                PasswordResetToken.used == False,
+                PasswordResetToken.id != reset_token.id
+            )
+        )
+    ).scalars().all()
+    for token in other_tokens:
+        token.used = True
+    
+    db.commit()
+    
+    return Message(message="Password has been reset successfully")
+
+
+@router.post("/qr-code/generate", response_model=QRCodeSessionResponse)
+def generate_qr_code_session(db: Session = Depends(get_db)):
+    """Generate a new QR code session for login."""
+    # Generate a secure session token
+    session_token = secrets.token_urlsafe(32)
+    
+    # Create session (expires in 5 minutes)
+    qr_session = QRCodeSession(
+        session_token=session_token,
+        expires_at=datetime.utcnow() + timedelta(minutes=5),
+        scanned=False
+    )
+    db.add(qr_session)
+    db.commit()
+    db.refresh(qr_session)
+    
+    # Construct QR code URL (deep link format for mobile app)
+    # Format: tapestry://login?token=<session_token>
+    qr_code_url = f"tapestry://login?token={session_token}"
+    
+    return QRCodeSessionResponse(
+        session_token=session_token,
+        expires_at=qr_session.expires_at,
+        qr_code_url=qr_code_url
+    )
+
+
+@router.post("/qr-code/scan", response_model=Message)
+def scan_qr_code(payload: QRCodeScanRequest, db: Session = Depends(get_db)):
+    """Scan QR code and associate with user (called from mobile app)."""
+    # Find the session
+    qr_session = db.execute(
+        select(QRCodeSession).where(
+            and_(
+                QRCodeSession.session_token == payload.session_token,
+                QRCodeSession.scanned == False,
+                QRCodeSession.expires_at > datetime.utcnow()
+            )
+        )
+    ).scalar_one_or_none()
+    
+    if not qr_session:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired QR code session"
+        )
+    
+    # Verify user exists
+    user = db.get(User, payload.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Mark session as scanned
+    qr_session.scanned = True
+    qr_session.scanned_at = datetime.utcnow()
+    qr_session.user_id = payload.user_id
+    
+    db.commit()
+    
+    return Message(message="QR code scanned successfully")
+
+
+@router.get("/qr-code/status/{session_token}", response_model=QRCodeStatusResponse)
+def check_qr_code_status(session_token: str, db: Session = Depends(get_db)):
+    """Check the status of a QR code session (polling endpoint)."""
+    qr_session = db.execute(
+        select(QRCodeSession).where(QRCodeSession.session_token == session_token)
+    ).scalar_one_or_none()
+    
+    if not qr_session:
+        return QRCodeStatusResponse(status="expired")
+    
+    # Check if expired
+    if qr_session.expires_at < datetime.utcnow():
+        return QRCodeStatusResponse(status="expired")
+    
+    # Check if scanned
+    if qr_session.scanned and qr_session.user_id:
+        # Generate auth token for the user
+        access_token = create_access_token(data={"sub": str(qr_session.user_id)})
+        return QRCodeStatusResponse(status="scanned", access_token=access_token)
+    
+    return QRCodeStatusResponse(status="pending")

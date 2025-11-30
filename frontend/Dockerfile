@@ -1,27 +1,24 @@
-FROM node:20-slim AS base
-
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+FROM oven/bun:1 AS base
 
 WORKDIR /app
 
 # Copy dependency files
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json bun.lock* ./
 
 # Install dependencies
-RUN pnpm install
+RUN bun install --frozen-lockfile
 
 # Copy application code
 COPY . .
 
 # Build the application
-RUN pnpm build
+RUN bun run build
 
 # Expose port
 EXPOSE 3000
 
 # Run the application
-CMD ["pnpm", "start"]
+CMD ["bun", "run", "start"]
 
 
 

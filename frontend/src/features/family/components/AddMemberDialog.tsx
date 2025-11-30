@@ -166,7 +166,7 @@ export function AddMemberDialog({
             {/* Info message for children */}
             {role === "child" && (
               <div className="p-3 rounded-md bg-muted/50 border border-muted text-sm text-muted-foreground">
-                <p>Children don't need email or password since only parents can sign in to the service.</p>
+                <p>Children don&apos;t need email or password since only parents can sign in to the service.</p>
               </div>
             )}
 

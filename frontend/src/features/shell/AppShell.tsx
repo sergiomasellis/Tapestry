@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 
@@ -13,13 +14,56 @@ type AppShellProps = {
  * touch-friendly padding and responsive container.
  */
 export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
+  const isAuthRoute = pathname?.startsWith("/auth");
+  const [isDarkMode, setIsDarkMode] = React.useState(false);
+
+  React.useEffect(() => {
+    // Check initial theme
+    const checkTheme = () => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    };
+
+    checkTheme();
+
+    // Watch for theme changes
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const backgroundImage = isAuthRoute
+    ? isDarkMode
+      ? "url(/HERO_BG_DARK.png)"
+      : "url(/HERO_BG.png)"
+    : undefined;
+
   return (
-    <div className="min-h-dvh flex flex-col">
+    <div className="h-dvh flex flex-col overflow-hidden">
       <Header />
-      <main className="flex-1">
-        <div className="mx-auto w-full max-w-7xl px-3 py-3 sm:px-4 sm:py-4 md:py-6 touch-pan-y">
-          {children}
-        </div>
+      <main 
+        className={isAuthRoute ? "flex-1 flex flex-col items-center justify-center p-4 bg-cover bg-center bg-no-repeat bg-fixed relative overflow-auto" : "flex-1 overflow-auto"}
+        style={isAuthRoute ? {
+          backgroundImage,
+          backgroundColor: '#e9e1f3'
+        } : undefined}
+      >
+        {isAuthRoute && (
+          <div className="absolute inset-0 bg-[#e9e1f3]/60 pointer-events-none" />
+        )}
+        {isAuthRoute ? (
+          <div className="relative z-10 w-full flex flex-col items-center justify-center min-h-full">
+            {children}
+          </div>
+        ) : (
+          <div className="mx-auto w-full max-w-7xl px-3 py-3 sm:px-4 sm:py-4 md:py-6 touch-pan-y">
+            {children}
+          </div>
+        )}
       </main>
       <footer className="border-t-2 border-border bg-muted/30 mt-auto">
         <div className="mx-auto w-full max-w-7xl px-3 py-6 sm:px-4">

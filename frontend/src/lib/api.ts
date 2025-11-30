@@ -52,6 +52,62 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
   return response;
 }
 
+// Password reset functions
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+  const response = await apiFetch("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Failed to request password reset" }));
+    throw new Error(error.detail || "Failed to request password reset");
+  }
+  
+  return response.json();
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  const response = await apiFetch("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Failed to reset password" }));
+    throw new Error(error.detail || "Failed to reset password");
+  }
+  
+  return response.json();
+}
+
+// QR Code login functions
+export async function generateQRCodeSession(): Promise<{ session_token: string; expires_at: string; qr_code_url: string }> {
+  const response = await apiFetch("/auth/qr-code/generate", {
+    method: "POST",
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Failed to generate QR code session" }));
+    throw new Error(error.detail || "Failed to generate QR code session");
+  }
+  
+  return response.json();
+}
+
+export async function checkQRCodeStatus(sessionToken: string): Promise<{ status: "pending" | "scanned" | "expired"; access_token?: string }> {
+  const response = await apiFetch(`/auth/qr-code/status/${sessionToken}`, {
+    method: "GET",
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Failed to check QR code status" }));
+    throw new Error(error.detail || "Failed to check QR code status");
+  }
+  
+  return response.json();
+}
+
 
 
 

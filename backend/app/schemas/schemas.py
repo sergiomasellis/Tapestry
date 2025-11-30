@@ -84,6 +84,32 @@ class SignupRequest(BaseModel):
     role: Literal["parent", "child"] = "parent"
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+# QR Code Login
+class QRCodeSessionResponse(BaseModel):
+    session_token: str
+    expires_at: datetime
+    qr_code_url: str  # Full URL to scan (e.g., tapestry://login?token=...)
+
+
+class QRCodeScanRequest(BaseModel):
+    session_token: str
+    user_id: int  # User ID from mobile app authentication
+
+
+class QRCodeStatusResponse(BaseModel):
+    status: Literal["pending", "scanned", "expired"]
+    access_token: Optional[str] = None
+
+
 # Events
 class EventBase(BaseModel):
     family_id: int

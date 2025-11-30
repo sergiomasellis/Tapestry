@@ -742,10 +742,10 @@ function DashboardPageContent() {
     <TooltipProvider delayDuration={0}>
       <div className="space-y-5">
         {/* Top toolbar */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <button
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-card shadow-sm hover:bg-accent transition"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card shadow-sm hover:bg-accent transition touch-manipulation"
               aria-label={
                 view === "month"
                   ? "Previous month"
@@ -758,7 +758,7 @@ function DashboardPageContent() {
               <ChevronLeft className="size-4" aria-hidden="true" />
             </button>
             <button
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-card shadow-sm hover:bg-accent transition"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card shadow-sm hover:bg-accent transition touch-manipulation"
               aria-label={
                 view === "month"
                   ? "Next month"
@@ -770,25 +770,25 @@ function DashboardPageContent() {
             >
               <ChevronRight className="size-4" aria-hidden="true" />
             </button>
-            <div className="text-lg font-semibold tracking-tight">
+            <div className="text-base sm:text-lg font-semibold tracking-tight truncate min-w-0">
               {view === "month"
                 ? `${format(monthGrid.firstOfMonth, "MMMM yyyy")}`
                 : view === "day"
                 ? `${format(weekStart, "EEEE, MMM d, yyyy")}`
-                : `${format(weekStart, "dd MMMM")} – ${format(
+                : `${format(weekStart, "dd MMM")} – ${format(
                     addDays(weekStart, 6),
                     "dd MMM"
                   )}`}
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {/* View toggle */}
             <div className="rounded-full bg-muted/60 p-1">
               <button
                 type="button"
                 onClick={() => setView("day")}
-                className={`px-3 py-1.5 text-sm rounded-full transition ${
+                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-full transition touch-manipulation ${
                   view === "day"
                     ? "bg-card shadow-sm"
                     : "text-muted-foreground hover:bg-muted"
@@ -800,7 +800,7 @@ function DashboardPageContent() {
               <button
                 type="button"
                 onClick={() => setView("week")}
-                className={`px-3 py-1.5 text-sm rounded-full transition ${
+                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-full transition touch-manipulation ${
                   view === "week"
                     ? "bg-card shadow-sm"
                     : "text-muted-foreground hover:bg-muted"
@@ -812,7 +812,7 @@ function DashboardPageContent() {
               <button
                 type="button"
                 onClick={() => setView("month")}
-                className={`px-3 py-1.5 text-sm rounded-full transition ${
+                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-full transition touch-manipulation ${
                   view === "month"
                     ? "bg-card shadow-sm"
                     : "text-muted-foreground hover:bg-muted"
@@ -843,12 +843,12 @@ function DashboardPageContent() {
             >
               <DialogTrigger asChild>
                 <Button
-                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm"
+                  className="inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium shadow-sm touch-manipulation"
                   aria-label="Add item"
                   data-open="new-event"
                 >
                   <Plus className="size-4" aria-hidden="true" />
-                  New
+                  <span className="hidden sm:inline">New</span>
                 </Button>
               </DialogTrigger>
 
@@ -1033,8 +1033,8 @@ function DashboardPageContent() {
                 />
               ) : view === "week" ? (
                 /* WEEK VIEW */
-                <div className="rounded-xl border bg-card/90 p-3 shadow-sm transition hover:shadow-md">
-                  <div className="mb-2 flex items-center justify-between">
+                <div className="rounded-xl border bg-card/90 p-2 sm:p-3 shadow-sm transition hover:shadow-md">
+                  <div className="mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <div className="text-sm font-semibold">This Week</div>
                     <div className="text-[11px] text-muted-foreground">
                       {format(weekStart, "MMM d")} –{" "}
@@ -1042,102 +1042,109 @@ function DashboardPageContent() {
                     </div>
                   </div>
 
-                  {/* Weekday headers */}
-                  <div className="grid grid-cols-[56px_1fr] gap-2 mb-2">
-                    <div />
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
-                      {days.map((d) => {
-                        const dayChores = getChoresForDay(d.date);
-                        const pendingChores = dayChores.filter(c => !c.completed).length;
-                        return (
-                          <div
-                            key={`hdr-${d.key}`}
-                            className="flex items-center justify-between"
-                          >
-                            <div className="text-sm font-semibold">
-                              {format(d.date, "EEE dd")}
-                            </div>
-                            <div className="text-[11px] text-muted-foreground">
-                              {pendingChores > 0 ? `${pendingChores} chore${pendingChores > 1 ? 's' : ''}` : ''}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Chores row - all-day items */}
-                  <div className="grid grid-cols-[56px_1fr] gap-2 mb-2">
-                    <div className="text-[10px] text-muted-foreground text-right pr-2 pt-1">Chores</div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7">
-                      {days.map((d) => {
-                        const dayChores = getChoresForDay(d.date);
-                        return (
-                          <div key={`chores-${d.key}`} className="space-y-1 min-h-[24px]">
-                            {dayChores.slice(0, 3).map((chore) => (
-                              <div
-                                key={`wk-chore-${chore.id}`}
-                                onClick={() => handleChoreClick(chore)}
-                                className={`truncate rounded px-1.5 py-0.5 text-[10px] cursor-pointer transition flex items-center gap-1 ${
-                                  chore.completed
-                                    ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 line-through opacity-60"
-                                    : "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300 hover:bg-violet-200"
-                                }`}
-                              >
-                                {chore.completed && <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />}
-                                <span>{chore.emoji || "📋"}</span>
-                                <span className="truncate">{chore.title}</span>
-                              </div>
-                            ))}
-                            {dayChores.length > 3 && (
-                              <div className="text-[9px] text-muted-foreground">+{dayChores.length - 3} more</div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-[56px_1fr] gap-2">
-                    <HourRail />
-
-                    <div className="relative" style={{ height: GRID_PX }}>
-                      {/* Hour lines overlay */}
-                      <div className="absolute inset-0 z-[5] pointer-events-none">
-                        {Array.from({ length: END_HOUR - START_HOUR + 1 }).map(
-                          (_, i, arr) => {
-                            const top = (i / (arr.length - 1)) * GRID_PX;
+                  {/* Mobile: Horizontal scrollable container */}
+                  <div className="overflow-x-auto -mx-2 sm:mx-0 px-2 sm:px-0 touch-pan-x">
+                    <div className="min-w-[600px] sm:min-w-0">
+                      {/* Weekday headers */}
+                      <div className="grid grid-cols-[40px_1fr] sm:grid-cols-[56px_1fr] gap-2 mb-2">
+                        <div />
+                        <div className="grid grid-cols-7 gap-2 sm:gap-4">
+                          {days.map((d) => {
+                            const dayChores = getChoresForDay(d.date);
+                            const pendingChores = dayChores.filter(c => !c.completed).length;
                             return (
                               <div
-                                key={`week-hourline-${i}`}
-                                className="pointer-events-none absolute left-0 right-0"
-                                style={{
-                                  top,
-                                  borderTop:
-                                    "1px solid color-mix(in oklab, var(--foreground), white 90%)",
-                                }}
-                              />
+                                key={`hdr-${d.key}`}
+                                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 min-w-[80px]"
+                              >
+                                <div className="text-xs sm:text-sm font-semibold">
+                                  {format(d.date, "EEE dd")}
+                                </div>
+                                {pendingChores > 0 && (
+                                  <div className="text-[10px] sm:text-[11px] text-muted-foreground">
+                                    {pendingChores} chore{pendingChores > 1 ? 's' : ''}
+                                  </div>
+                                )}
+                              </div>
                             );
-                          }
-                        )}
-                        {nowTop !== null && (
-                          <div
-                            className="current-time-line absolute left-0 right-0"
-                            style={{ top: nowTop }}
-                          />
-                        )}
+                          })}
+                        </div>
                       </div>
 
-                      {/* Day columns */}
-                      <div className="absolute inset-0 z-[10] grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-7 items-start content-start">
-                        {days.map((d) => (
-                          <div
-                            key={d.key}
-                            className="relative flex h-full flex-col"
-                          >
-                            {renderDayColumn(d.date)}
+                      {/* Chores row - all-day items */}
+                      <div className="grid grid-cols-[40px_1fr] sm:grid-cols-[56px_1fr] gap-2 mb-2">
+                        <div className="text-[9px] sm:text-[10px] text-muted-foreground text-right pr-1 sm:pr-2 pt-1">Chores</div>
+                        <div className="grid grid-cols-7 gap-2 sm:gap-4">
+                          {days.map((d) => {
+                            const dayChores = getChoresForDay(d.date);
+                            return (
+                              <div key={`chores-${d.key}`} className="space-y-1 min-h-[24px] min-w-[80px]">
+                                {dayChores.slice(0, 3).map((chore) => (
+                                  <div
+                                    key={`wk-chore-${chore.id}`}
+                                    onClick={() => handleChoreClick(chore)}
+                                    className={`truncate rounded px-1.5 py-0.5 text-[9px] sm:text-[10px] cursor-pointer transition flex items-center gap-1 touch-manipulation ${
+                                      chore.completed
+                                        ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 line-through opacity-60"
+                                        : "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900"
+                                    }`}
+                                  >
+                                    {chore.completed && <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />}
+                                    <span>{chore.emoji || "📋"}</span>
+                                    <span className="truncate">{chore.title}</span>
+                                  </div>
+                                ))}
+                                {dayChores.length > 3 && (
+                                  <div className="text-[8px] sm:text-[9px] text-muted-foreground">+{dayChores.length - 3} more</div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-[40px_1fr] sm:grid-cols-[56px_1fr] gap-2">
+                        <HourRail />
+
+                        <div className="relative" style={{ height: GRID_PX }}>
+                          {/* Hour lines overlay */}
+                          <div className="absolute inset-0 z-[5] pointer-events-none">
+                            {Array.from({ length: END_HOUR - START_HOUR + 1 }).map(
+                              (_, i, arr) => {
+                                const top = (i / (arr.length - 1)) * GRID_PX;
+                                return (
+                                  <div
+                                    key={`week-hourline-${i}`}
+                                    className="pointer-events-none absolute left-0 right-0"
+                                    style={{
+                                      top,
+                                      borderTop:
+                                        "1px solid color-mix(in oklab, var(--foreground), white 90%)",
+                                    }}
+                                  />
+                                );
+                              }
+                            )}
+                            {nowTop !== null && (
+                              <div
+                                className="current-time-line absolute left-0 right-0"
+                                style={{ top: nowTop }}
+                              />
+                            )}
                           </div>
-                        ))}
+
+                          {/* Day columns */}
+                          <div className="absolute inset-0 z-[10] grid grid-cols-7 gap-2 sm:gap-4 items-start content-start">
+                            {days.map((d) => (
+                              <div
+                                key={d.key}
+                                className="relative flex h-full flex-col min-w-[80px]"
+                              >
+                                {renderDayColumn(d.date)}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

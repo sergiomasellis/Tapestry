@@ -75,15 +75,15 @@ Tapestry is a modern, touch-friendly multi-user calendar application designed fo
    ```
 2. Install dependencies:
    ```bash
-   npm install
+   bun install
    # or
-   pnpm install
+   npm install
    ```
 3. Run the development server:
    ```bash
-   npm run dev
+   bun run dev
    # or
-   pnpm dev
+   npm run dev
    ```
 
 ### Docker Setup (Recommended for Production)
