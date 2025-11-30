@@ -43,7 +43,7 @@ import { useDragAndDrop } from "@/hooks/useDragAndDrop";
 import { useEvents } from "@/hooks/useEvents";
 import { useEventEditor } from "@/hooks/useEventEditor";
 import { useChores } from "@/hooks/useChores";
-import { useFamilyMembers, useCreateFamilyMember, useUpdateFamilyMember } from "@/hooks/useFamilyMembers";
+import { useFamilyMembers } from "@/hooks/useFamilyMembers";
 import { useFamily } from "@/hooks/useFamily";
 
 // Calendar utilities and constants
@@ -65,14 +65,11 @@ import {
 import { HourRail } from "@/features/calendar/components/HourLines";
 import { HoverPreview } from "@/features/calendar/components/HoverPreview";
 import { MonthView } from "@/features/calendar/components/MonthView";
+import { TaskView } from "@/features/calendar/components/TaskView";
 
 // Chore components
 import { ChoreCard } from "@/features/chores/components/ChoreCard";
 import { ChoreDialog } from "@/features/chores/components/ChoreDialog";
-
-// Family components
-import { AddMemberDialog } from "@/features/family/components/AddMemberDialog";
-import { EditMemberDialog } from "@/features/family/components/EditMemberDialog";
 
 // Participant selector component
 import { ParticipantSelector } from "@/components/ParticipantSelector";
@@ -143,24 +140,11 @@ function DashboardPageContent() {
   } = useChores(FAMILY_ID);
 
   // Family members for assignment
-  const { members: familyMembers, refetch: refetchMembers } = useFamilyMembers(FAMILY_ID);
-
-  // Create family member
-  const { createMember, loading: createMemberLoading } = useCreateFamilyMember();
-
-  // Update family member
-  const { updateMember, loading: updateMemberLoading } = useUpdateFamilyMember();
+  const { members: familyMembers } = useFamilyMembers(FAMILY_ID);
 
   // Chore dialog state
   const [choreDialogOpen, setChoreDialogOpen] = useState(false);
   const [editingChore, setEditingChore] = useState<Chore | null>(null);
-
-  // Add member dialog state
-  const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
-
-  // Edit member dialog state
-  const [editMemberDialogOpen, setEditMemberDialogOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
 
   // New Event dialog state
   const [openDialog, setOpenDialog] = useState(false);
@@ -248,48 +232,6 @@ function DashboardPageContent() {
 
   const handleChoreClick = (chore: Chore) => {
     handleEditChore(chore);
-  };
-
-  // Family member handlers
-  const handleSaveMember = async (data: {
-    name: string;
-    email?: string;
-    password?: string;
-    role: "parent" | "child";
-    family_id: number;
-  }) => {
-    try {
-      // Auto-create family if none exists
-      let familyId = FAMILY_ID;
-      if (!familyId) {
-        const newFamily = await createFamily("My Family", "admin123");
-        if (!newFamily) {
-          throw new Error("Failed to create family. Please try again.");
-        }
-        familyId = newFamily.id;
-        // Refetch family to update FAMILY_ID
-        await refetchFamily();
-      }
-      await createMember({ ...data, family_id: familyId });
-      refetchMembers();
-    } catch (err) {
-      // Error is handled in the hook and displayed in the dialog
-      throw err;
-    }
-  };
-
-  const handleEditMember = (member: FamilyMember) => {
-    setEditingMember(member);
-    setEditMemberDialogOpen(true);
-  };
-
-  const handleSaveEditedMember = async (userId: number, data: {
-    name?: string;
-    profile_image_url?: string | null;
-    icon_emoji?: string | null;
-  }) => {
-    await updateMember(userId, data);
-    refetchMembers();
   };
 
   // Create new event handler
@@ -742,7 +684,7 @@ function DashboardPageContent() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <button
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card shadow-sm hover:bg-accent transition touch-manipulation"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-border bg-card shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0px_0px_var(--shadow-color)] active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all touch-manipulation"
               aria-label={
                 view === "month"
                   ? "Previous month"
@@ -755,7 +697,7 @@ function DashboardPageContent() {
               <ChevronLeft className="size-4" aria-hidden="true" />
             </button>
             <button
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card shadow-sm hover:bg-accent transition touch-manipulation"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-border bg-card shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0px_0px_var(--shadow-color)] active:translate-x-[0px] active:translate-y-[0px] active:shadow-none transition-all touch-manipulation"
               aria-label={
                 view === "month"
                   ? "Next month"
@@ -767,11 +709,13 @@ function DashboardPageContent() {
             >
               <ChevronRight className="size-4" aria-hidden="true" />
             </button>
-            <div className="text-base sm:text-lg font-semibold tracking-tight truncate min-w-0">
+            <div className="text-base sm:text-lg font-black uppercase tracking-tight truncate min-w-0 border-2 border-border bg-card px-3 py-1 rounded-lg shadow-[2px_2px_0px_0px_var(--shadow-color)]">
               {view === "month"
                 ? `${format(monthGrid.firstOfMonth, "MMMM yyyy")}`
                 : view === "day"
                 ? `${format(weekStart, "EEEE, MMM d, yyyy")}`
+                : view === "task"
+                ? "Task View"
                 : `${format(weekStart, "dd MMM")} – ${format(
                     addDays(weekStart, 6),
                     "dd MMM"
@@ -781,14 +725,14 @@ function DashboardPageContent() {
 
           <div className="flex items-center gap-2 shrink-0">
             {/* View toggle */}
-            <div className="rounded-full bg-muted/60 p-1">
+            <div className="flex gap-1 p-1 border-2 border-border rounded-xl bg-muted shadow-[2px_2px_0px_0px_var(--shadow-color)]">
               <button
                 type="button"
                 onClick={() => setView("day")}
-                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-full transition touch-manipulation ${
+                className={`px-3 py-1.5 text-xs sm:text-sm font-bold uppercase rounded-lg transition-all touch-manipulation ${
                   view === "day"
-                    ? "bg-card shadow-sm"
-                    : "text-muted-foreground hover:bg-muted"
+                    ? "bg-primary text-primary-foreground border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] translate-x-[-1px] translate-y-[-1px]"
+                    : "text-muted-foreground hover:bg-background hover:text-foreground"
                 }`}
                 aria-pressed={view === "day"}
               >
@@ -797,10 +741,10 @@ function DashboardPageContent() {
               <button
                 type="button"
                 onClick={() => setView("week")}
-                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-full transition touch-manipulation ${
+                className={`px-3 py-1.5 text-xs sm:text-sm font-bold uppercase rounded-lg transition-all touch-manipulation ${
                   view === "week"
-                    ? "bg-card shadow-sm"
-                    : "text-muted-foreground hover:bg-muted"
+                    ? "bg-primary text-primary-foreground border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] translate-x-[-1px] translate-y-[-1px]"
+                    : "text-muted-foreground hover:bg-background hover:text-foreground"
                 }`}
                 aria-pressed={view === "week"}
               >
@@ -809,14 +753,26 @@ function DashboardPageContent() {
               <button
                 type="button"
                 onClick={() => setView("month")}
-                className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-full transition touch-manipulation ${
+                className={`px-3 py-1.5 text-xs sm:text-sm font-bold uppercase rounded-lg transition-all touch-manipulation ${
                   view === "month"
-                    ? "bg-card shadow-sm"
-                    : "text-muted-foreground hover:bg-muted"
+                    ? "bg-primary text-primary-foreground border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] translate-x-[-1px] translate-y-[-1px]"
+                    : "text-muted-foreground hover:bg-background hover:text-foreground"
                 }`}
                 aria-pressed={view === "month"}
               >
                 Month
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("task")}
+                className={`px-3 py-1.5 text-xs sm:text-sm font-bold uppercase rounded-lg transition-all touch-manipulation ${
+                  view === "task"
+                    ? "bg-primary text-primary-foreground border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] translate-x-[-1px] translate-y-[-1px]"
+                    : "text-muted-foreground hover:bg-background hover:text-foreground"
+                }`}
+                aria-pressed={view === "task"}
+              >
+                Tasks
               </button>
             </div>
 
@@ -1001,6 +957,8 @@ function DashboardPageContent() {
                 ? "Daily Dashboard"
                 : view === "week"
                 ? "Weekly Dashboard"
+                : view === "task"
+                ? "Tasks Dashboard"
                 : "Monthly Dashboard"}
             </h1>
           </div>
@@ -1014,9 +972,6 @@ function DashboardPageContent() {
                <TabsTrigger className="rounded-full" value="chores">
                  Chores
                </TabsTrigger>
-               <TabsTrigger className="rounded-full" value="family">
-                 Family
-               </TabsTrigger>
              </TabsList>
 
             <TabsContent value="events" className="mt-4">
@@ -1027,6 +982,16 @@ function DashboardPageContent() {
                   chores={apiChores}
                   onEventClick={openEditor}
                   onChoreClick={handleChoreClick}
+                />
+              ) : view === "task" ? (
+                <TaskView
+                  days={days}
+                  events={mergedEvents}
+                  chores={apiChores}
+                  familyMembers={familyMembers}
+                  onEventClick={openEditor}
+                  onChoreClick={handleChoreClick}
+                  onToggleChore={handleToggleComplete}
                 />
               ) : view === "week" ? (
                 /* WEEK VIEW */
@@ -1275,64 +1240,6 @@ function DashboardPageContent() {
                 </div>
               )}
              </TabsContent>
-
-             <TabsContent value="family" className="mt-4">
-               {/* Family toolbar */}
-               <div className="flex items-center justify-between mb-4">
-                 <div className="text-sm text-muted-foreground">
-                   {familyMembers.length} member{familyMembers.length !== 1 ? "s" : ""}
-                 </div>
-                 <Button onClick={() => setAddMemberDialogOpen(true)} size="sm">
-                   <Plus className="size-4 mr-2" />
-                   Add Member
-                 </Button>
-               </div>
-
-               {familyMembers.length === 0 ? (
-                 <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                   <p className="text-muted-foreground mb-4">
-                     No family members yet. Add your first member!
-                   </p>
-                   <Button onClick={() => setAddMemberDialogOpen(true)}>
-                     <Plus className="size-4 mr-2" />
-                     Add Member
-                   </Button>
-                 </div>
-               ) : (
-                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                   {familyMembers.map((member) => (
-                     <div
-                       key={member.id}
-                       className="rounded-lg border bg-card p-4 shadow-sm"
-                     >
-                       <div className="flex items-center gap-3">
-                         <Avatar className="size-10">
-                           <AvatarImage src={member.profile_image_url || undefined} alt={member.name} />
-                           <AvatarFallback>
-                             {member.icon_emoji || member.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                           </AvatarFallback>
-                         </Avatar>
-                         <div className="flex-1">
-                           <h3 className="font-medium">{member.name}</h3>
-                           <p className="text-sm text-muted-foreground capitalize">{member.role}</p>
-                           {member.email && (
-                             <p className="text-xs text-muted-foreground">{member.email}</p>
-                           )}
-                         </div>
-                         <Button
-                           variant="ghost"
-                           size="sm"
-                           onClick={() => handleEditMember(member)}
-                           className="shrink-0"
-                         >
-                           Edit
-                         </Button>
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-               )}
-             </TabsContent>
            </Tabs>
 
           {/* Chore Dialog */}
@@ -1346,26 +1253,6 @@ function DashboardPageContent() {
               onSave={handleSaveChore}
             />
           )}
-
-          {/* Add Member Dialog */}
-          {FAMILY_ID && (
-            <AddMemberDialog
-              open={addMemberDialogOpen}
-              onOpenChange={setAddMemberDialogOpen}
-              familyId={FAMILY_ID}
-              onSave={handleSaveMember}
-              loading={createMemberLoading}
-            />
-          )}
-
-          {/* Edit Member Dialog */}
-          <EditMemberDialog
-            open={editMemberDialogOpen}
-            onOpenChange={setEditMemberDialogOpen}
-            member={editingMember}
-            onSave={handleSaveEditedMember}
-            loading={updateMemberLoading}
-          />
         </div>
       </div>
     </TooltipProvider>

@@ -69,43 +69,39 @@ export function Header() {
 
             <nav className="hidden md:block" role="navigation" aria-label="Primary">
               <NavigationMenu>
-                <NavigationMenuList>
+                <NavigationMenuList className="gap-2">
                   <NavigationMenuItem>
-                    <NavigationMenuLink asChild className="px-3 py-2 rounded-md hover:bg-accent focus:bg-accent outline-none">
+                    <NavigationMenuLink asChild className="group h-10 w-max flex-row items-center justify-center rounded-md border-2 border-transparent bg-background px-4 py-2 text-sm font-bold transition-all hover:border-border hover:shadow-[2px_2px_0px_0px_var(--shadow-color)] focus:border-border focus:shadow-[2px_2px_0px_0px_var(--shadow-color)] focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50 [&_svg]:size-4 [&_svg]:shrink-0">
                       <Link href="/dashboard" className="flex items-center gap-2" prefetch={false}>
-                        <span className="sr-only">Dashboard</span>
-                        <CalendarDays className="size-4" aria-hidden="true" />
-                        <span aria-hidden="true">Dashboard</span>
+                        <CalendarDays className="size-4" />
+                        <span className="hidden sm:inline">DASHBOARD</span>
                       </Link>
                     </NavigationMenuLink>
                   </NavigationMenuItem>
 
                   <NavigationMenuItem>
-                    <NavigationMenuLink asChild className="px-3 py-2 rounded-md hover:bg-accent focus:bg-accent outline-none">
+                    <NavigationMenuLink asChild className="group h-10 w-max flex-row items-center justify-center rounded-md border-2 border-transparent bg-background px-4 py-2 text-sm font-bold transition-all hover:border-border hover:shadow-[2px_2px_0px_0px_var(--shadow-color)] focus:border-border focus:shadow-[2px_2px_0px_0px_var(--shadow-color)] focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50 [&_svg]:size-4 [&_svg]:shrink-0">
                       <Link href="/leaderboard" className="flex items-center gap-2" prefetch={false}>
-                        <span className="sr-only">Leaderboard</span>
-                        <Trophy className="size-4" aria-hidden="true" />
-                        <span aria-hidden="true">Leaderboard</span>
+                        <Trophy className="size-4" />
+                        <span className="hidden sm:inline">LEADERBOARD</span>
                       </Link>
                     </NavigationMenuLink>
                   </NavigationMenuItem>
 
                   <NavigationMenuItem>
-                    <NavigationMenuLink asChild className="px-3 py-2 rounded-md hover:bg-accent focus:bg-accent outline-none">
+                    <NavigationMenuLink asChild className="group h-10 w-max flex-row items-center justify-center rounded-md border-2 border-transparent bg-background px-4 py-2 text-sm font-bold transition-all hover:border-border hover:shadow-[2px_2px_0px_0px_var(--shadow-color)] focus:border-border focus:shadow-[2px_2px_0px_0px_var(--shadow-color)] focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50 [&_svg]:size-4 [&_svg]:shrink-0">
                       <Link href="/chores" className="flex items-center gap-2" prefetch={false}>
-                        <span className="sr-only">Chores</span>
-                        <ListTodo className="size-4" aria-hidden="true" />
-                        <span aria-hidden="true">Chores</span>
+                        <ListTodo className="size-4" />
+                        <span className="hidden sm:inline">CHORES</span>
                       </Link>
                     </NavigationMenuLink>
                   </NavigationMenuItem>
 
                   <NavigationMenuItem>
-                    <NavigationMenuLink asChild className="px-3 py-2 rounded-md hover:bg-accent focus:bg-accent outline-none">
+                    <NavigationMenuLink asChild className="group h-10 w-max flex-row items-center justify-center rounded-md border-2 border-transparent bg-background px-4 py-2 text-sm font-bold transition-all hover:border-border hover:shadow-[2px_2px_0px_0px_var(--shadow-color)] focus:border-border focus:shadow-[2px_2px_0px_0px_var(--shadow-color)] focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50 [&_svg]:size-4 [&_svg]:shrink-0">
                       <Link href="/admin" className="flex items-center gap-2" prefetch={false}>
-                        <span className="sr-only">Admin</span>
-                        <Shield className="size-4" aria-hidden="true" />
-                        <span aria-hidden="true">Admin</span>
+                        <Shield className="size-4" />
+                        <span className="hidden sm:inline">ADMIN</span>
                       </Link>
                     </NavigationMenuLink>
                   </NavigationMenuItem>
@@ -126,54 +122,54 @@ export function Header() {
                     </Button>
                   </SheetTrigger>
                   <SheetContent side="left" className="w-64 sm:w-80">
-                    <SheetHeader>
-                      <SheetTitle>Navigation</SheetTitle>
+                    <SheetHeader className="border-b-2 border-border pb-4">
+                      <SheetTitle>NAVIGATION</SheetTitle>
                     </SheetHeader>
-                    <nav className="flex flex-col gap-2 mt-6" role="navigation" aria-label="Mobile Navigation">
+                    <nav className="flex flex-col gap-2 mt-6 px-4" role="navigation" aria-label="Mobile Navigation">
                       <SheetClose asChild>
                         <Link
                           href="/dashboard"
-                          className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-accent transition-colors text-left"
+                          className="flex items-center gap-3 px-4 py-3 rounded-md border-2 border-transparent bg-background text-sm font-bold uppercase transition-all hover:border-border hover:bg-accent hover:text-accent-foreground hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[2px_2px_0px_0px_var(--shadow-color)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none text-left"
                         >
-                          <CalendarDays className="size-5" />
-                          <span>Dashboard</span>
+                          <CalendarDays className="size-5 shrink-0" />
+                          <span>DASHBOARD</span>
                         </Link>
                       </SheetClose>
                       <SheetClose asChild>
                         <Link
                           href="/leaderboard"
-                          className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-accent transition-colors text-left"
+                          className="flex items-center gap-3 px-4 py-3 rounded-md border-2 border-transparent bg-background text-sm font-bold uppercase transition-all hover:border-border hover:bg-accent hover:text-accent-foreground hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[2px_2px_0px_0px_var(--shadow-color)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none text-left"
                         >
-                          <Trophy className="size-5" />
-                          <span>Leaderboard</span>
+                          <Trophy className="size-5 shrink-0" />
+                          <span>LEADERBOARD</span>
                         </Link>
                       </SheetClose>
                       <SheetClose asChild>
                         <Link
                           href="/chores"
-                          className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-accent transition-colors text-left"
+                          className="flex items-center gap-3 px-4 py-3 rounded-md border-2 border-transparent bg-background text-sm font-bold uppercase transition-all hover:border-border hover:bg-accent hover:text-accent-foreground hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[2px_2px_0px_0px_var(--shadow-color)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none text-left"
                         >
-                          <ListTodo className="size-5" />
-                          <span>Chores</span>
+                          <ListTodo className="size-5 shrink-0" />
+                          <span>CHORES</span>
                         </Link>
                       </SheetClose>
                       <SheetClose asChild>
                         <Link
                           href="/admin"
-                          className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-accent transition-colors text-left"
+                          className="flex items-center gap-3 px-4 py-3 rounded-md border-2 border-transparent bg-background text-sm font-bold uppercase transition-all hover:border-border hover:bg-accent hover:text-accent-foreground hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[2px_2px_0px_0px_var(--shadow-color)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none text-left"
                         >
-                          <Shield className="size-5" />
-                          <span>Admin</span>
+                          <Shield className="size-5 shrink-0" />
+                          <span>ADMIN</span>
                         </Link>
                       </SheetClose>
                       <Separator className="my-2" />
                       <SheetClose asChild>
                         <button
                           onClick={handleLogout}
-                          className="flex items-center gap-3 px-4 py-3 rounded-md hover:bg-accent transition-colors text-left w-full"
+                          className="flex items-center gap-3 px-4 py-3 rounded-md border-2 border-transparent bg-background text-sm font-bold uppercase transition-all hover:border-border hover:bg-destructive hover:text-destructive-foreground hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[2px_2px_0px_0px_var(--shadow-color)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none text-left w-full"
                         >
-                          <LogOut className="size-5" />
-                          <span>Logout</span>
+                          <LogOut className="size-5 shrink-0" />
+                          <span>LOGOUT</span>
                         </button>
                       </SheetClose>
                     </nav>

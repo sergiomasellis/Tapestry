@@ -78,6 +78,7 @@ export type Chore = {
   recurrence_end_date?: string | null; // ISO date string
   parent_chore_id?: number | null;
   max_completions?: number | null; // Max times this recurring chore can be completed
+  completed_today?: boolean; // Computed by backend
 };
 
 export type ChoreCreate = {
@@ -138,7 +139,7 @@ export type FamilyMember = {
   created_at: string;
 };
 
-export type CalendarView = "week" | "day" | "month";
+export type CalendarView = "week" | "day" | "month" | "task";
 
 export type DragState = {
   id: string;

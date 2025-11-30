@@ -30,7 +30,42 @@ def list_chores(
         .scalars()
         .all()
     )
-    return rows
+    
+    # Augment with completed_today status
+    today_start = datetime.combine(date.today(), datetime.min.time())
+    today_end = datetime.combine(date.today(), datetime.max.time())
+
+    results = []
+    for chore in rows:
+        # Default to existing completed status
+        is_completed_today = chore.completed
+
+        if chore.is_recurring:
+            # For recurring chores, check if completion limit is reached FOR TODAY
+            daily_limit = chore.recurrence_count if chore.recurrence_count else 1
+            
+            completions_today = (
+                db.query(ChoreCompletion)
+                .filter(
+                    ChoreCompletion.chore_id == chore.id,
+                    ChoreCompletion.completed_at >= today_start,
+                    ChoreCompletion.completed_at <= today_end
+                )
+                .count()
+            )
+            
+            if completions_today >= daily_limit:
+                is_completed_today = True
+            else:
+                is_completed_today = False
+        
+        # Create a temporary object with the extra field
+        # We use the Pydantic model's constructor to include the extra field
+        chore_dict = {c.name: getattr(chore, c.name) for c in chore.__table__.columns}
+        chore_dict["completed_today"] = is_completed_today
+        results.append(chore_dict)
+
+    return results
 
 
 @router.post("/", response_model=ChoreOut)
@@ -197,7 +232,32 @@ def complete_chore(
 
     # RECURRING CHORE: Create a completion record if under max limit
     if chore.is_recurring:
-        # Check current completion count
+        # Check completion count for TODAY (if daily recurrence)
+        # This prevents spamming completions on the same day if recurrence_count is limited
+        today_start = datetime.combine(date.today(), datetime.min.time())
+        today_end = datetime.combine(date.today(), datetime.max.time())
+        
+        completions_today = (
+            db.query(ChoreCompletion)
+            .filter(
+                ChoreCompletion.chore_id == chore_id,
+                ChoreCompletion.completed_at >= today_start,
+                ChoreCompletion.completed_at <= today_end
+            )
+            .count()
+        )
+        
+        # If it's a daily chore, respect the daily limit (default to 1 if not specified)
+        # recurrence_count handles "2x per day" etc.
+        daily_limit = chore.recurrence_count if chore.recurrence_count else 1
+        
+        if completions_today >= daily_limit:
+             raise HTTPException(
+                status_code=400,
+                detail=f"Daily completion limit reached ({daily_limit}). Come back tomorrow!",
+            )
+
+        # Check total completion count (overall limit)
         current_completions = (
             db.query(ChoreCompletion)
             .filter(ChoreCompletion.chore_id == chore_id)

@@ -208,6 +208,7 @@ class ChoreUpdate(BaseModel):
 class ChoreOut(ChoreBase):
     id: int
     created_at: datetime
+    completed_today: bool = False  # Added for frontend daily completion tracking
 
     class Config:
         from_attributes = True
