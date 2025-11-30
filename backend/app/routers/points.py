@@ -102,7 +102,7 @@ def get_leaderboard(
 
         completed_chores = [
             CompletedChoreOut(
-                id=chore.id,
+                id=point.id,  # Use Point.id for unique keys (same chore can be completed multiple times)
                 title=chore.title,
                 emoji=chore.emoji,
                 point_value=point.points,

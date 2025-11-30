@@ -5,8 +5,8 @@ from datetime import date, datetime
 from typing import List
 
 from ..db.session import get_db
-from ..models.models import Chore, Point, User
-from ..schemas.schemas import ChoreCreate, ChoreOut, ChoreUpdate, Message
+from ..models.models import Chore, Point, User, ChoreCompletion
+from ..schemas.schemas import ChoreCreate, ChoreOut, ChoreUpdate, Message, ChoreCompletionOut
 from .auth import get_current_user
 
 router = APIRouter()
@@ -62,6 +62,7 @@ def create_chore(
         recurrence_time_of_day=payload.recurrence_time_of_day,
         recurrence_end_date=payload.recurrence_end_date,
         parent_chore_id=payload.parent_chore_id,
+        max_completions=payload.max_completions,
     )
     db.add(chore)
     db.commit()
@@ -117,6 +118,45 @@ def delete_chore(
     return Message(message="deleted")
 
 
+@router.get("/{chore_id}/completions", response_model=List[ChoreCompletionOut])
+def get_chore_completions(
+    chore_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get completion history for a chore (particularly useful for recurring chores).
+    Returns list of completions with user info and timestamps.
+    """
+    chore = db.get(Chore, chore_id)
+    if not chore:
+        raise HTTPException(status_code=404, detail="Chore not found")
+    
+    # Check if user belongs to the same family
+    if current_user.family_id != chore.family_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    completions = (
+        db.query(ChoreCompletion, User)
+        .join(User, ChoreCompletion.user_id == User.id)
+        .filter(ChoreCompletion.chore_id == chore_id)
+        .order_by(ChoreCompletion.completed_at.desc())
+        .all()
+    )
+    
+    return [
+        ChoreCompletionOut(
+            id=completion.id,
+            user_id=completion.user_id,
+            user_name=user.name,
+            user_emoji=user.icon_emoji,
+            completed_at=completion.completed_at,
+            points_awarded=completion.points_awarded,
+        )
+        for completion, user in completions
+    ]
+
+
 @router.post("/{chore_id}/complete", response_model=ChoreOut)
 def complete_chore(
     chore_id: int,
@@ -125,8 +165,9 @@ def complete_chore(
 ):
     """
     Mark a chore as complete. Behavior depends on chore type:
-    - Group chore: Marks complete for everyone, awards points to first assignee
-    - Individual chore: Toggles completion for the current user only
+    - Recurring chore: Creates a new completion record, awards points, keeps chore available
+    - Non-recurring group chore: Marks complete for everyone, awards points to first assignee
+    - Non-recurring individual chore: Toggles completion for the current user only
     """
     chore = db.get(Chore, chore_id)
     if not chore:
@@ -143,6 +184,50 @@ def complete_chore(
     elif chore.assigned_to:
         assignee_ids = [chore.assigned_to]
     
+    # RECURRING CHORE: Create a completion record if under max limit
+    if chore.is_recurring:
+        # Check current completion count
+        current_completions = db.query(ChoreCompletion).filter(
+            ChoreCompletion.chore_id == chore_id
+        ).count()
+        
+        # Check if max completions reached
+        if chore.max_completions is not None and current_completions >= chore.max_completions:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Maximum completions reached ({chore.max_completions}). This chore cannot be completed again."
+            )
+        
+        # Create a completion record for the current user
+        completion = ChoreCompletion(
+            chore_id=chore_id,
+            user_id=current_user.id,
+            completed_at=datetime.utcnow(),
+            points_awarded=chore.point_value,
+        )
+        db.add(completion)
+        
+        # Also add to Points table for leaderboard compatibility
+        point = Point(
+            user_id=current_user.id,
+            chore_id=chore_id,
+            points=chore.point_value,
+            awarded_at=datetime.utcnow(),
+        )
+        db.add(point)
+        
+        # Check if we've now hit the max - if so, mark as completed
+        new_completion_count = current_completions + 1
+        if chore.max_completions is not None and new_completion_count >= chore.max_completions:
+            chore.completed = True
+        else:
+            chore.completed = False
+        
+        db.commit()
+        db.refresh(chore)
+        return chore
+    
+    # NON-RECURRING CHORE LOGIC (existing behavior)
     if chore.is_group_chore:
         # GROUP CHORE: Toggle completion for everyone
         chore.completed = not chore.completed

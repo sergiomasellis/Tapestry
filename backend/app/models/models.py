@@ -106,10 +106,24 @@ class Chore(Base):
     recurrence_time_of_day: Mapped[str | None] = mapped_column(String)  # morning, afternoon, evening, anytime
     recurrence_end_date: Mapped[datetime | None] = mapped_column(Date)  # optional end date
     parent_chore_id: Mapped[int | None] = mapped_column(ForeignKey("chores.id"))  # link to template for recurring instances
+    max_completions: Mapped[int | None] = mapped_column(Integer)  # max number of times this chore can be completed (for recurring chores)
 
     family: Mapped["FamilyGroup"] = relationship("FamilyGroup", back_populates="chores")
     assignee: Mapped["User"] = relationship("User", back_populates="chores_assigned")
     points: Mapped[list["Point"]] = relationship("Point", back_populates="chore")
+
+
+class ChoreCompletion(Base):
+    __tablename__ = "chore_completions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chore_id: Mapped[int] = mapped_column(ForeignKey("chores.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    completed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    points_awarded: Mapped[int] = mapped_column(Integer, nullable=False)
+    
+    chore: Mapped["Chore"] = relationship("Chore")
+    user: Mapped["User"] = relationship("User")
 
 
 class Point(Base):

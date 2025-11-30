@@ -2,6 +2,7 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Chore, ChoreItem, FamilyMember } from "@/types";
-import { Check, MoreVertical, Pencil, Trash2, Undo } from "lucide-react";
+import { Check, MoreVertical, Pencil, Trash2, Undo, Repeat } from "lucide-react";
+import { useChoreCompletions } from "@/hooks/useChoreCompletions";
 
 // Legacy ChoreCard for demo data (backwards compatible)
 type LegacyChoreCardProps = {
@@ -66,22 +68,63 @@ export function ChoreCard({
   const assignee = familyMembers.find((m) => m.id === chore.assigned_to);
   const assigneeName = assignee?.name || "Unassigned";
   const assigneeEmoji = assignee?.icon_emoji || "";
+  
+  // Fetch completion count for recurring chores
+  const { completionCount, refetch: refetchCompletions } = useChoreCompletions(
+    chore.is_recurring ? chore.id : undefined
+  );
+
+  // Check if max completions reached
+  const maxCompletions = chore.max_completions ?? null;
+  const isMaxReached = maxCompletions !== null && completionCount >= maxCompletions;
+  const canComplete = !isMaxReached || !chore.is_recurring;
+
+  // Wrap the toggle complete to refresh completions after action
+  const handleToggleComplete = async (c: Chore) => {
+    if (c.is_recurring && isMaxReached) {
+      return; // Don't allow completion if max reached
+    }
+    await onToggleComplete(c);
+    if (c.is_recurring) {
+      // Give backend a moment to save, then refetch
+      setTimeout(() => refetchCompletions(), 100);
+    }
+  };
+
+  // Determine if card should be faded (completed)
+  const isFaded = chore.completed || (chore.is_recurring && isMaxReached);
 
   return (
     <Card
       className={`border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] ${colorClass} bg-opacity-100 transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0px_0px_var(--shadow-color)] ${
-        chore.completed ? "opacity-75" : ""
+        isFaded ? "opacity-75" : ""
       }`}
     >
       <CardHeader className="pb-2 border-b-2 border-border bg-white/50 dark:bg-black/20">
         <div className="flex items-start justify-between">
           <CardTitle
             className={`text-base font-black flex items-center gap-2 ${
-              chore.completed ? "line-through text-muted-foreground" : ""
+              isFaded ? "line-through text-muted-foreground" : ""
             }`}
           >
             <span className="text-xl">{chore.emoji || "📋"}</span>
             {chore.title}
+            {chore.is_recurring && (
+              <Badge 
+                variant="outline" 
+                className={`ml-2 font-bold text-xs border-2 border-border ${
+                  isMaxReached 
+                    ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100" 
+                    : "bg-blue-100 dark:bg-blue-900"
+                }`}
+              >
+                <Repeat className="h-3 w-3 mr-1" />
+                {maxCompletions !== null 
+                  ? `${completionCount}/${maxCompletions}` 
+                  : `${completionCount}x`
+                }
+              </Badge>
+            )}
           </CardTitle>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -91,8 +134,24 @@ export function ChoreCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)]">
-              <DropdownMenuItem onClick={() => onToggleComplete(chore)} className="font-bold focus:bg-foreground focus:text-background">
-                {chore.completed ? (
+              <DropdownMenuItem 
+                onClick={() => canComplete && handleToggleComplete(chore)} 
+                className={`font-bold focus:bg-foreground focus:text-background ${!canComplete ? "opacity-50 cursor-not-allowed" : ""}`}
+                disabled={!canComplete}
+              >
+                {chore.is_recurring ? (
+                  isMaxReached ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      All Done!
+                    </>
+                  ) : (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Complete Again
+                    </>
+                  )
+                ) : chore.completed ? (
                   <>
                     <Undo className="mr-2 h-4 w-4" />
                     Mark Incomplete
@@ -136,17 +195,42 @@ export function ChoreCard({
               {assigneeName}
             </div>
           </div>
-          <div
-            className={`text-xs font-bold px-2 py-1 rounded-md border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] ${
-              chore.completed
-                ? "bg-green-400 text-black"
-                : "bg-orange-400 text-black"
-            }`}
-            role="status"
-            aria-label={chore.completed ? "completed" : "pending"}
-          >
-            {chore.completed ? "Done" : "Pending"}
-          </div>
+          {!chore.is_recurring && (
+            <div
+              className={`text-xs font-bold px-2 py-1 rounded-md border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] ${
+                chore.completed
+                  ? "bg-green-400 text-black"
+                  : "bg-orange-400 text-black"
+              }`}
+              role="status"
+              aria-label={chore.completed ? "completed" : "pending"}
+            >
+              {chore.completed ? "Done" : "Pending"}
+            </div>
+          )}
+          {chore.is_recurring && (
+            <div
+              className={`text-xs font-bold px-2 py-1 rounded-md border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] flex items-center gap-1 ${
+                isMaxReached 
+                  ? "bg-green-400 text-black" 
+                  : "bg-blue-400 text-black"
+              }`}
+              role="status"
+              aria-label={isMaxReached ? "completed" : "recurring"}
+            >
+              {isMaxReached ? (
+                <>
+                  <Check className="h-3 w-3" />
+                  All Done
+                </>
+              ) : (
+                <>
+                  <Repeat className="h-3 w-3" />
+                  Recurring
+                </>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

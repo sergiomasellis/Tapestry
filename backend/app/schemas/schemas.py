@@ -166,6 +166,7 @@ class ChoreBase(BaseModel):
     recurrence_time_of_day: Optional[Literal["morning", "afternoon", "evening", "anytime"]] = None
     recurrence_end_date: Optional[date] = None
     parent_chore_id: Optional[int] = None
+    max_completions: Optional[int] = None  # Max times this chore can be completed (for recurring)
 
 
 class ChoreCreate(ChoreBase):
@@ -191,11 +192,24 @@ class ChoreUpdate(BaseModel):
     recurrence_time_of_day: Optional[Literal["morning", "afternoon", "evening", "anytime"]] = None
     recurrence_end_date: Optional[date] = None
     parent_chore_id: Optional[int] = None
+    max_completions: Optional[int] = None
 
 
 class ChoreOut(ChoreBase):
     id: int
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ChoreCompletionOut(BaseModel):
+    id: int
+    user_id: int
+    user_name: str
+    user_emoji: Optional[str] = None
+    completed_at: datetime
+    points_awarded: int
 
     class Config:
         from_attributes = True

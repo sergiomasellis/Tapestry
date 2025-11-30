@@ -77,6 +77,7 @@ export type Chore = {
   recurrence_time_of_day?: "morning" | "afternoon" | "evening" | "anytime" | null;
   recurrence_end_date?: string | null; // ISO date string
   parent_chore_id?: number | null;
+  max_completions?: number | null; // Max times this recurring chore can be completed
 };
 
 export type ChoreCreate = {
@@ -100,6 +101,7 @@ export type ChoreCreate = {
   recurrence_time_of_day?: "morning" | "afternoon" | "evening" | "anytime" | null;
   recurrence_end_date?: string | null;
   parent_chore_id?: number | null;
+  max_completions?: number | null;
 };
 
 export type ChoreUpdate = {
@@ -121,6 +123,7 @@ export type ChoreUpdate = {
   recurrence_time_of_day?: "morning" | "afternoon" | "evening" | "anytime" | null;
   recurrence_end_date?: string | null;
   parent_chore_id?: number | null;
+  max_completions?: number | null;
 };
 
 // Family member type for assignment
@@ -153,6 +156,16 @@ export type HoverPreview = {
   heightPx: number;
   key: string;
 } | null;
+
+// Chore Completion types
+export type ChoreCompletion = {
+  id: number;
+  user_id: number;
+  user_name: string;
+  user_emoji?: string | null;
+  completed_at: string; // ISO datetime string
+  points_awarded: number;
+};
 
 // Leaderboard types
 export type CompletedChore = {
