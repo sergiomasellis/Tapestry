@@ -11,7 +11,6 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Star,
-  Trophy,
   Target,
   PartyPopper,
   Zap,

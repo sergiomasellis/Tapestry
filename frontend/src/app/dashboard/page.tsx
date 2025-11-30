@@ -91,7 +91,7 @@ function DashboardPageContent() {
   } = useCalendarNavigation();
 
   // Family management - fetch or create family (needed before events)
-  const { family, loading: familyLoading, createFamily, refetch: refetchFamily } = useFamily();
+  const { family, createFamily, refetch: refetchFamily } = useFamily();
   const FAMILY_ID = family?.id;
 
   // Commit drag ref - will be set after useEvents is called
@@ -120,13 +120,10 @@ function DashboardPageContent() {
   // Events management - uses dragState directly from hook (no sync needed)
   const {
     mergedEvents,
-    setEventList,
     addEvent,
     updateEvent,
     deleteEvent: removeEvent,
     commitDrag,
-    loading: eventsLoading,
-    error: eventsError,
   } = useEvents(dragState, FAMILY_ID, weekStart);
 
   // Update the ref after useEvents provides commitDrag
@@ -1339,23 +1336,27 @@ function DashboardPageContent() {
            </Tabs>
 
           {/* Chore Dialog */}
-          <ChoreDialog
-            open={choreDialogOpen}
-            onOpenChange={setChoreDialogOpen}
-            chore={editingChore}
-            familyMembers={familyMembers}
-            familyId={FAMILY_ID}
-            onSave={handleSaveChore}
-          />
+          {FAMILY_ID && (
+            <ChoreDialog
+              open={choreDialogOpen}
+              onOpenChange={setChoreDialogOpen}
+              chore={editingChore}
+              familyMembers={familyMembers}
+              familyId={FAMILY_ID}
+              onSave={handleSaveChore}
+            />
+          )}
 
           {/* Add Member Dialog */}
-          <AddMemberDialog
-            open={addMemberDialogOpen}
-            onOpenChange={setAddMemberDialogOpen}
-            familyId={FAMILY_ID}
-            onSave={handleSaveMember}
-            loading={createMemberLoading}
-          />
+          {FAMILY_ID && (
+            <AddMemberDialog
+              open={addMemberDialogOpen}
+              onOpenChange={setAddMemberDialogOpen}
+              familyId={FAMILY_ID}
+              onSave={handleSaveMember}
+              loading={createMemberLoading}
+            />
+          )}
 
           {/* Edit Member Dialog */}
           <EditMemberDialog

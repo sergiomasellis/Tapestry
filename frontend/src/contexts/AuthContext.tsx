@@ -10,6 +10,7 @@ export type User = {
   email: string | null;
   role: "parent" | "child";
   family_id: number | null;
+  profile_image_url?: string | null;
   created_at: string;
 };
 

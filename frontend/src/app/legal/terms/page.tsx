@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   Scale,
   Ban,
-  CreditCard,
   Gavel,
   Mail,
   ArrowLeft,

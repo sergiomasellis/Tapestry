@@ -131,10 +131,7 @@ export function useEvents(
     });
   }, [
     eventList,
-    dragState?.id,
-    dragState?.startMinutes,
-    dragState?.durationMinutes,
-    dragState?.dayOffset,
+    dragState,
   ]);
 
   const addEvent = useCallback(

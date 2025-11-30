@@ -84,6 +84,7 @@ export function useDragAndDrop({ onDragEnd }: UseDragAndDropOptions) {
         if (currentDrag && hasDraggedRef.current && !processingDragEndRef.current) {
           processingDragEndRef.current = true;
           // Pass the drag state without the internal originalStartMinutes field
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { originalStartMinutes, ...publicDragState } = currentDrag;
           console.log("🖱️ Calling onDragEnd for:", publicDragState.id);
           onDragEndRef.current(publicDragState);
