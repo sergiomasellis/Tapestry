@@ -20,20 +20,20 @@ type LegacyChoreCardProps = {
 
 export function LegacyChoreCard({ chore, colorClass }: LegacyChoreCardProps) {
   return (
-    <Card className={`shadow-sm ${colorClass} bg-opacity-60`}>
-      <CardHeader>
-        <CardTitle className="text-base">
-          <span className="mr-1">{chore.emoji}</span>
+    <Card className={`border-2 border-black shadow-[2px_2px_0px_0px_var(--shadow-color)] ${colorClass} bg-opacity-100`}>
+      <CardHeader className="border-b-2 border-black pb-3">
+        <CardTitle className="text-base font-bold">
+          <span className="mr-2">{chore.emoji}</span>
           {chore.title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex items-center justify-between">
-        <div className="text-xs text-muted-foreground">
+      <CardContent className="flex items-center justify-between pt-3">
+        <div className="text-xs font-bold text-foreground">
           {chore.points} pts · {chore.assignedTo}
         </div>
         <div
-          className={`text-xs ${
-            chore.completed ? "text-green-700" : "text-muted-foreground"
+          className={`text-xs font-bold px-2 py-0.5 rounded border-2 border-black ${
+            chore.completed ? "bg-green-400 text-black" : "bg-white text-black"
           }`}
           role="status"
           aria-label={chore.completed ? "completed" : "pending"}
@@ -69,29 +69,29 @@ export function ChoreCard({
 
   return (
     <Card
-      className={`shadow-sm ${colorClass} bg-opacity-60 transition-all hover:shadow-md ${
+      className={`border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] ${colorClass} bg-opacity-100 transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0px_0px_var(--shadow-color)] ${
         chore.completed ? "opacity-75" : ""
       }`}
     >
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 border-b-2 border-border bg-white/50 dark:bg-black/20">
         <div className="flex items-start justify-between">
           <CardTitle
-            className={`text-base flex items-center gap-1 ${
+            className={`text-base font-black flex items-center gap-2 ${
               chore.completed ? "line-through text-muted-foreground" : ""
             }`}
           >
-            <span>{chore.emoji || "📋"}</span>
+            <span className="text-xl">{chore.emoji || "📋"}</span>
             {chore.title}
           </CardTitle>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-1 hover:bg-transparent hover:border-2 hover:border-border">
                 <MoreVertical className="h-4 w-4" />
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onToggleComplete(chore)}>
+            <DropdownMenuContent align="end" className="border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)]">
+              <DropdownMenuItem onClick={() => onToggleComplete(chore)} className="font-bold focus:bg-foreground focus:text-background">
                 {chore.completed ? (
                   <>
                     <Undo className="mr-2 h-4 w-4" />
@@ -104,14 +104,14 @@ export function ChoreCard({
                   </>
                 )}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onEdit(chore)}>
+              <DropdownMenuItem onClick={() => onEdit(chore)} className="font-bold focus:bg-foreground focus:text-background">
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuItem
                 onClick={() => onDelete(chore)}
-                className="text-destructive focus:text-destructive"
+                className="text-destructive font-bold focus:bg-destructive focus:text-white"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
@@ -120,27 +120,27 @@ export function ChoreCard({
           </DropdownMenu>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-3">
         {chore.description && (
-          <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+          <p className="text-xs font-medium text-foreground/80 mb-3 line-clamp-2 border-l-2 border-border pl-2">
             {chore.description}
           </p>
         )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+            <div className="text-xs font-bold bg-foreground text-background px-2 py-1 rounded-md shadow-[1px_1px_0px_0px_rgba(255,255,255,0.5)] dark:shadow-[1px_1px_0px_0px_rgba(0,0,0,0.5)]">
               {chore.point_value} pts
             </div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
+            <div className="text-xs font-bold flex items-center gap-1 bg-white/80 dark:bg-black/40 px-2 py-1 rounded-md border border-border">
               {assigneeEmoji && <span>{assigneeEmoji}</span>}
               {assigneeName}
             </div>
           </div>
           <div
-            className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+            className={`text-xs font-bold px-2 py-1 rounded-md border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] ${
               chore.completed
-                ? "bg-green-100 text-green-700"
-                : "bg-orange-100 text-orange-700"
+                ? "bg-green-400 text-black"
+                : "bg-orange-400 text-black"
             }`}
             role="status"
             aria-label={chore.completed ? "completed" : "pending"}

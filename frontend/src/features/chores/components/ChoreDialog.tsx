@@ -279,15 +279,15 @@ export function ChoreDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px] p-0 gap-0 max-h-[90vh] flex flex-col overflow-hidden">
-        {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 p-6 text-white shrink-0">
+        {/* Header with solid color and border */}
+        <div className="bg-primary p-6 text-primary-foreground border-b-2 border-border shrink-0">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-white flex items-center gap-2">
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-primary-foreground flex items-center gap-2">
               <Sparkles className="h-6 w-6" />
               {isEditing ? "Edit Chore" : "New Chore"}
             </DialogTitle>
           </DialogHeader>
-          <p className="text-white/80 mt-1 text-sm">
+          <p className="text-primary-foreground/80 mt-1 text-sm font-medium">
             {isEditing ? "Update the chore details" : "Create a fun task for your family!"}
           </p>
           
@@ -299,28 +299,26 @@ export function ChoreDialog({
               const isCompleted = currentStep > stepNum;
               
               return (
-                <div key={stepNum} className="flex items-center flex-1">
-                  <div className="flex flex-col items-center flex-1">
+                <div key={stepNum} className="flex items-center flex-1 last:flex-none last:w-auto">
+                  <div className="flex flex-col items-center z-10 relative">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black border-2 border-border transition-all shadow-[2px_2px_0px_0px_var(--shadow-color)] ${
                         isActive
-                          ? "bg-white text-purple-600 scale-110"
+                          ? "bg-background text-foreground scale-110"
                           : isCompleted
-                          ? "bg-white/30 text-white"
-                          : "bg-white/20 text-white/60"
+                          ? "bg-foreground text-background"
+                          : "bg-background/20 text-primary-foreground"
                       }`}
                     >
                       {isCompleted ? <Check className="h-4 w-4" /> : stepNum}
                     </div>
-                    <span className={`text-xs mt-1.5 ${isActive ? "text-white font-medium" : "text-white/60"}`}>
+                    <span className={`text-xs mt-1.5 font-bold uppercase ${isActive ? "text-primary-foreground" : "text-primary-foreground/60"}`}>
                       {label}
                     </span>
                   </div>
                   {stepNum < totalSteps && (
                     <div
-                      className={`h-0.5 flex-1 mx-2 transition-all ${
-                        isCompleted ? "bg-white/30" : "bg-white/10"
-                      }`}
+                      className={`h-0.5 flex-1 mx-2 border-t-2 border-dashed border-primary-foreground/50 min-w-[2rem]`}
                     />
                   )}
                 </div>
@@ -330,7 +328,7 @@ export function ChoreDialog({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6 flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto p-1">
             {/* Step 1: Basic Info */}
             {currentStep === 1 && (
             <div className="space-y-6">
@@ -341,7 +339,7 @@ export function ChoreDialog({
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-14 w-14 text-3xl p-0 shrink-0 hover:scale-105 transition-transform"
+                  className="h-14 w-14 text-3xl p-0 shrink-0 hover:scale-105 transition-transform border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)]"
                 >
                   {emoji}
                 </Button>
@@ -404,9 +402,9 @@ export function ChoreDialog({
                       key={value}
                       type="button"
                       onClick={() => setPointValue(value)}
-                      className={`w-8 h-8 rounded-full text-sm font-bold transition-all ${
+                      className={`w-8 h-8 rounded-full text-sm font-black border-2 border-border transition-all ${
                         value <= pointValue
-                          ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white scale-100"
+                          ? "bg-amber-400 text-black scale-100 shadow-[2px_2px_0px_0px_var(--shadow-color)]"
                           : "bg-muted text-muted-foreground hover:bg-muted/80 scale-90"
                       }`}
                     >
@@ -443,10 +441,10 @@ export function ChoreDialog({
                     key={member.id}
                     type="button"
                     onClick={() => handleAssigneeToggle(member.id)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 border-2 ${
+                    className={`px-3 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 border-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,0)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_0px_var(--shadow-color)] ${
                       isSelected
-                        ? "bg-blue-500 text-white border-blue-500"
-                        : "bg-background border-muted hover:border-blue-300"
+                        ? "bg-primary text-primary-foreground border-border shadow-[3px_3px_0px_0px_var(--shadow-color)]"
+                        : "bg-background border-border hover:bg-accent"
                     }`}
                   >
                     {isSelected && <Check className="h-3.5 w-3.5" />}
@@ -723,12 +721,12 @@ export function ChoreDialog({
                 Previous
               </Button>
             )}
-            {currentStep < totalSteps ? (
+              {currentStep < totalSteps ? (
               <Button
                 type="button"
                 onClick={handleNext}
                 disabled={currentStep === 1 && !title.trim()}
-                className="flex-1 h-12 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-bold"
+                className="flex-1 h-12 border-2 border-border bg-primary text-primary-foreground font-bold uppercase shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:bg-primary/90"
               >
                 Next
                 <ChevronRight className="h-4 w-4 ml-1" />
@@ -737,7 +735,7 @@ export function ChoreDialog({
               <Button
                 type="submit"
                 disabled={saving || !title.trim()}
-                className="flex-1 h-12 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-bold"
+                className="flex-1 h-12 border-2 border-border bg-primary text-primary-foreground font-bold uppercase shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:bg-primary/90"
               >
                 {saving ? "Saving..." : isEditing ? "Save Changes" : "Create Chore"}
               </Button>

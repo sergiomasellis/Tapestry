@@ -30,23 +30,23 @@ export function MonthView({ monthGrid, events, chores = [], onEventClick, onChor
   };
 
   return (
-    <div className="rounded-xl border bg-card/90 p-3 shadow-sm transition hover:shadow-md">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-semibold">
+    <div className="rounded-xl border-2 border-border bg-card p-3 shadow-[4px_4px_0px_0px_var(--shadow-color)] transition hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0px_0px_var(--shadow-color)]">
+      <div className="mb-4 flex items-center justify-between px-1">
+        <div className="text-lg font-black uppercase tracking-tight">
           {format(monthGrid.firstOfMonth, "MMMM yyyy")}
         </div>
-        <div className="text-[11px] text-muted-foreground">
+        <div className="text-xs font-bold text-muted-foreground border-2 border-border px-2 py-1 rounded bg-card">
           {format(monthGrid.gridStart, "MMM d")} –{" "}
           {format(addDays(monthGrid.gridStart, 41), "MMM d")}
         </div>
       </div>
 
       {/* Month grid: 7 columns x 6 rows */}
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-2 mb-2">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
           <div
             key={d}
-            className="text-xs font-medium text-muted-foreground px-2"
+            className="text-xs font-black uppercase text-center py-1"
           >
             {d}
           </div>
@@ -71,33 +71,35 @@ export function MonthView({ monthGrid, events, chores = [], onEventClick, onChor
           return (
             <div
               key={idx}
-              className={`rounded-lg border p-2 bg-muted/30 hover:bg-muted/50 transition relative min-h-[100px] ${
-                !cell.inCurrentMonth ? "opacity-50" : ""
-              }`}
+              className={`rounded-lg border-2 border-border p-2 relative min-h-[100px] transition-all ${
+                isToday ? "bg-card ring-2 ring-primary ring-offset-2" : "bg-card hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[2px_2px_0px_0px_var(--shadow-color)]"
+              } ${!cell.inCurrentMonth ? "opacity-40 bg-muted" : ""}`}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-2">
                 <div
-                  className={`text-xs font-semibold ${
-                    isToday ? "text-primary" : ""
+                  className={`text-sm font-black ${
+                    isToday ? "text-primary" : "text-foreground"
                   }`}
                 >
                   {format(cell.date, "d")}
                 </div>
-                <div className="text-[10px] text-muted-foreground">
-                  {totalItems > 0 && `${totalItems}`}
-                </div>
+                {totalItems > 0 && (
+                  <div className="text-[10px] font-bold bg-foreground text-background px-1.5 py-0.5 rounded-full">
+                    {totalItems}
+                  </div>
+                )}
               </div>
 
               {/* Items - events and chores */}
-              <div className="mt-2 space-y-1">
+              <div className="space-y-1.5">
                 {/* Chores first */}
                 {dayChores.slice(0, 2).map((chore) => (
                   <div
                     key={`chore-${chore.id}`}
-                    className={`truncate rounded-md px-2 py-1 text-xs cursor-pointer transition flex items-center gap-1 ${
+                    className={`truncate rounded-md px-2 py-1 text-[10px] font-bold border cursor-pointer transition flex items-center gap-1 shadow-[1px_1px_0px_0px_var(--shadow-color)] ${
                       chore.completed 
-                        ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 line-through opacity-60" 
-                        : "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900"
+                        ? "bg-green-100 border-green-700 text-green-900 line-through opacity-60" 
+                        : "bg-violet-100 border-violet-700 text-violet-900 hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[2px_2px_0px_0px_var(--shadow-color)]"
                     }`}
                     title={`${chore.title} • ${chore.point_value} pts`}
                     onClick={() => onChoreClick?.(chore)}
@@ -112,7 +114,7 @@ export function MonthView({ monthGrid, events, chores = [], onEventClick, onChor
                 {dayEvents.slice(0, 3 - Math.min(dayChores.length, 2)).map((e, i) => (
                   <div
                     key={`${e.id}-${i}`}
-                    className="truncate rounded-md px-2 py-1 text-xs bg-card shadow-sm border cursor-pointer hover:bg-accent transition"
+                    className="truncate rounded-md px-2 py-1 text-[10px] font-bold bg-card border border-border shadow-[1px_1px_0px_0px_var(--shadow-color)] cursor-pointer hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[2px_2px_0px_0px_var(--shadow-color)] transition"
                     title={`${e.title} • ${format(e.start, "p")}–${format(
                       e.end,
                       "p"
@@ -125,7 +127,7 @@ export function MonthView({ monthGrid, events, chores = [], onEventClick, onChor
                 ))}
                 
                 {totalItems > 3 ? (
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="text-[10px] font-bold text-center text-muted-foreground bg-muted rounded border border-border">
                     +{totalItems - 3} more
                   </div>
                 ) : null}

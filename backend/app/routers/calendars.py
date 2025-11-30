@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -68,15 +68,25 @@ def create_event(
     if payload.family_id != current_user.family_id:
         raise HTTPException(status_code=403, detail="Cannot create event for different family")
     
-    if payload.end_time <= payload.start_time:
+    # Convert timezone-aware datetimes to timezone-naive UTC for SQLite compatibility
+    start_time = payload.start_time
+    if start_time.tzinfo is not None:
+        start_time = start_time.astimezone(timezone.utc).replace(tzinfo=None)
+    
+    end_time = payload.end_time
+    if end_time.tzinfo is not None:
+        end_time = end_time.astimezone(timezone.utc).replace(tzinfo=None)
+    
+    if end_time <= start_time:
         raise HTTPException(status_code=400, detail="end_time must be after start_time")
+    
     ev = Event(
         family_id=payload.family_id,
         title=payload.title,
         description=payload.description,
         emoji=payload.emoji,
-        start_time=payload.start_time,
-        end_time=payload.end_time,
+        start_time=start_time,
+        end_time=end_time,
         source=payload.source,
         source_id=payload.source_id,
         created_at=datetime.utcnow(),
@@ -134,6 +144,18 @@ def update_event(
         raise HTTPException(status_code=403, detail="Access denied")
     
     updates = payload.model_dump(exclude_unset=True)
+    
+    # Convert timezone-aware datetimes to timezone-naive UTC for SQLite compatibility
+    if "start_time" in updates and isinstance(updates["start_time"], datetime):
+        dt = updates["start_time"]
+        if dt.tzinfo is not None:
+            updates["start_time"] = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    
+    if "end_time" in updates and isinstance(updates["end_time"], datetime):
+        dt = updates["end_time"]
+        if dt.tzinfo is not None:
+            updates["end_time"] = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    
     if "end_time" in updates and "start_time" in updates:
         if updates["end_time"] <= updates["start_time"]:
             raise HTTPException(status_code=400, detail="end_time must be after start_time")
@@ -147,7 +169,8 @@ def update_event(
     for k, v in updates.items():
         setattr(event, k, v)
     db.commit()
-    db.refresh(event)
+    # Return the event object directly - it's already updated in memory
+    # Avoid db.refresh() which can cause SQLite datetime read issues
     return event
 
 

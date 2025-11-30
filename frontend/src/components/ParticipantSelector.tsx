@@ -65,10 +65,10 @@ export function ParticipantSelector({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex w-full min-h-9 items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-colors",
-          "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring",
+          "flex w-full min-h-9 items-center justify-between gap-2 rounded-md border-2 border-border bg-transparent px-3 py-2 text-sm shadow-[4px_4px_0px_0px_var(--shadow-color)] transition-all",
+          "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring focus-visible:translate-x-[2px] focus-visible:translate-y-[2px] focus-visible:shadow-none",
           "disabled:cursor-not-allowed disabled:opacity-50",
-          "dark:bg-input/30 dark:hover:bg-input/50"
+          "dark:bg-input/30 dark:hover:bg-input/50 hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0px_0px_var(--shadow-color)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
         )}
       >
         <div className="flex flex-wrap gap-1 flex-1 min-w-0">
