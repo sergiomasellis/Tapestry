@@ -25,14 +25,14 @@ import { useFamily } from "@/hooks/useFamily";
 import { Chore, ChoreCreate, ChoreUpdate, FamilyMember } from "@/types";
 import { differenceInDays, parseISO, addDays } from "date-fns";
 
-// Color schemes for family members
+// Color schemes for family members - Neo-Brutalist solid colors
 const MEMBER_COLORS = [
-  { bg: "from-pink-500 to-rose-500", light: "bg-pink-100 dark:bg-pink-950", text: "text-pink-700 dark:text-pink-300", border: "border-pink-200 dark:border-pink-800", accent: "pink" },
-  { bg: "from-blue-500 to-indigo-500", light: "bg-blue-100 dark:bg-blue-950", text: "text-blue-700 dark:text-blue-300", border: "border-blue-200 dark:border-blue-800", accent: "blue" },
-  { bg: "from-emerald-500 to-green-500", light: "bg-emerald-100 dark:bg-emerald-950", text: "text-emerald-700 dark:text-emerald-300", border: "border-emerald-200 dark:border-emerald-800", accent: "emerald" },
-  { bg: "from-violet-500 to-purple-500", light: "bg-violet-100 dark:bg-violet-950", text: "text-violet-700 dark:text-violet-300", border: "border-violet-200 dark:border-violet-800", accent: "violet" },
-  { bg: "from-amber-500 to-orange-500", light: "bg-amber-100 dark:bg-amber-950", text: "text-amber-700 dark:text-amber-300", border: "border-amber-200 dark:border-amber-800", accent: "amber" },
-  { bg: "from-cyan-500 to-teal-500", light: "bg-cyan-100 dark:bg-cyan-950", text: "text-cyan-700 dark:text-cyan-300", border: "border-cyan-200 dark:border-cyan-800", accent: "cyan" },
+  { bg: "bg-[var(--event-purple)]", light: "bg-[var(--event-purple)]/10", text: "text-foreground", border: "border-border", accent: "purple" },
+  { bg: "bg-[var(--event-blue)]", light: "bg-[var(--event-blue)]/10", text: "text-foreground", border: "border-border", accent: "blue" },
+  { bg: "bg-[var(--event-green)]", light: "bg-[var(--event-green)]/10", text: "text-foreground", border: "border-border", accent: "green" },
+  { bg: "bg-primary", light: "bg-primary/10", text: "text-foreground", border: "border-border", accent: "primary" },
+  { bg: "bg-[var(--event-orange)]", light: "bg-[var(--event-orange)]/10", text: "text-foreground", border: "border-border", accent: "orange" },
+  { bg: "bg-accent", light: "bg-accent/10", text: "text-foreground", border: "border-border", accent: "accent" },
 ];
 
 // Confetti component
@@ -52,9 +52,16 @@ function Confetti({ show }: { show: boolean }) {
           }}
         >
           <div
-            className="w-3 h-3 rounded-sm"
+            className="w-3 h-3 border-2 border-border"
             style={{
-              backgroundColor: ['#f472b6', '#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#f87171'][Math.floor(Math.random() * 6)],
+              backgroundColor: [
+                'var(--event-purple)',
+                'var(--event-blue)', 
+                'var(--event-green)', 
+                'var(--event-orange)',
+                'oklch(0.6 0.2 270)', // primary
+                'oklch(0.6 0.2 20)'  // destructive
+              ][Math.floor(Math.random() * 6)],
               transform: `rotate(${Math.random() * 360}deg)`,
             }}
           />
@@ -78,8 +85,8 @@ function ProgressRing({ progress, size = 100 }: { progress: number; size?: numbe
         <circle cx={size / 2} cy={size / 2} r={radius} stroke="url(#progressGradient)" strokeWidth={strokeWidth} fill="none" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} className="transition-all duration-700" />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#8b5cf6" />
-            <stop offset="100%" stopColor="#ec4899" />
+            <stop offset="0%" stopColor="oklch(0.6 0.2 270)" />
+            <stop offset="100%" stopColor="oklch(0.7 0.2 150)" />
           </linearGradient>
         </defs>
       </svg>
@@ -147,19 +154,19 @@ function ChoreCard({
     if (daysRemaining === null) return null;
     
     if (daysRemaining < 0) {
-      return <Badge className="bg-red-500 text-white text-xs"><AlertCircle className="mr-1 h-3 w-3" />Overdue</Badge>;
+      return <Badge className="bg-destructive text-destructive-foreground text-xs border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] uppercase font-black"><AlertCircle className="mr-1 h-3 w-3" />Overdue</Badge>;
     } else if (daysRemaining === 0) {
-      return <Badge className="bg-orange-500 text-white text-xs animate-pulse"><Zap className="mr-1 h-3 w-3" />Due Today</Badge>;
+      return <Badge className="bg-secondary text-secondary-foreground text-xs animate-pulse border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] uppercase font-black"><Zap className="mr-1 h-3 w-3" />Due Today</Badge>;
     } else if (daysRemaining <= 2) {
-      return <Badge variant="outline" className="text-xs border-amber-400 text-amber-600"><Clock className="mr-1 h-3 w-3" />{daysRemaining}d left</Badge>;
+      return <Badge className="bg-card text-foreground text-xs border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] uppercase font-black"><Clock className="mr-1 h-3 w-3" />{daysRemaining}d left</Badge>;
     }
     return null;
   };
 
   return (
-    <Card className={`group relative overflow-hidden transition-all duration-200 hover:shadow-lg ${chore.completed ? 'opacity-60' : ''} ${isAnimating ? 'scale-[1.02]' : 'hover:scale-[1.01]'}`}>
+    <Card className={`group relative overflow-hidden border-2 border-border rounded-xl shadow-[4px_4px_0px_0px_var(--shadow-color)] transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--shadow-color)] ${chore.completed ? 'opacity-60' : ''} ${isAnimating ? 'scale-[1.02]' : ''}`}>
       {/* Top accent */}
-      <div className={`h-1 bg-gradient-to-r ${colorScheme.bg}`} />
+      <div className={`h-2 ${colorScheme.bg} border-b-2 border-border`} />
       
       <CardContent className="p-4">
         {/* Header */}
@@ -173,7 +180,7 @@ function ChoreCard({
                 {chore.title}
               </h3>
               {chore.is_recurring && (
-                <Badge variant="secondary" className="text-xs gap-1">
+                <Badge className="text-xs gap-1 bg-secondary text-secondary-foreground border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] uppercase font-black">
                   <Repeat className="h-3 w-3" />
                   Recurring
                 </Badge>
@@ -195,18 +202,18 @@ function ChoreCard({
 
         {/* Info row */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${colorScheme.light} ${colorScheme.text}`}>
+          <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-black uppercase ${colorScheme.light} border-2 ${colorScheme.border} shadow-[2px_2px_0px_0px_var(--shadow-color)]`}>
             <Star className="h-3 w-3" />
             {chore.point_value} pts
           </div>
           {assignees.length === 0 ? (
             <span className="text-xs text-muted-foreground">👤 Anyone</span>
           ) : assignees.length === 1 ? (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs font-bold text-muted-foreground">
               {assignees[0].icon_emoji} {assignees[0].name}
             </span>
           ) : isIndividualChore ? (
-            <Badge variant="outline" className="text-xs border-violet-300 text-violet-600">
+            <Badge className="text-xs bg-primary/10 text-foreground border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] uppercase font-black">
               Individual ({individualProgress?.done}/{individualProgress?.total})
             </Badge>
           ) : (
@@ -229,9 +236,9 @@ function ChoreCard({
               return (
                 <div
                   key={assignee.id}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] ${
                     hasCompleted 
-                      ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" 
+                      ? "bg-accent text-accent-foreground" 
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
@@ -247,20 +254,37 @@ function ChoreCard({
         <div className="flex gap-2">
           <Button
             onClick={handleComplete}
-            variant={chore.completed ? "outline" : "default"}
             size="sm"
-            className={`flex-1 ${!chore.completed ? `bg-gradient-to-r ${colorScheme.bg} text-white border-0 hover:opacity-90` : ''}`}
+            className={`flex-1 font-bold uppercase border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0px_0px_var(--shadow-color)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all ${
+              chore.completed 
+                ? 'bg-muted text-muted-foreground' 
+                : `${colorScheme.bg} text-foreground`
+            }`}
           >
             {chore.completed ? (
               <><CheckCircle2 className="mr-1.5 h-4 w-4" />Done!</>
             ) : isIndividualChore ? (
-              <><Target className="mr-1.5 h-4 w-4" />Mark my part done</>
+              <><Target className="mr-1.5 h-4 w-4" />Mark Done</>
             ) : (
               <><Target className="mr-1.5 h-4 w-4" />Complete</>
             )}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => onEdit(chore)} className="px-2">✏️</Button>
-          <Button variant="ghost" size="sm" onClick={() => onDelete(chore)} className="px-2 hover:bg-red-100 hover:text-red-600">🗑️</Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => onEdit(chore)} 
+            className="px-3 border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0px_0px_var(--shadow-color)] transition-all"
+          >
+            ✏️
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => onDelete(chore)} 
+            className="px-3 border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:bg-destructive hover:text-destructive-foreground hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0px_0px_var(--shadow-color)] transition-all"
+          >
+            🗑️
+          </Button>
         </div>
       </CardContent>
 
@@ -303,24 +327,24 @@ function MemberSection({
   return (
     <div className="mb-8">
       {/* Member header */}
-      <div className={`rounded-xl bg-gradient-to-r ${colorScheme.bg} p-[2px] mb-4`}>
-        <div className="bg-background rounded-[10px] p-4">
+      <div className="rounded-xl border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] mb-4 overflow-hidden">
+        <div className={`${colorScheme.bg} border-b-2 border-border p-4`}>
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               <span className="text-4xl">{member?.icon_emoji || "📋"}</span>
               <div>
-                <h2 className="text-xl font-bold">{member?.name || "Unassigned"}</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="text-xl font-black uppercase tracking-tight">{member?.name || "Unassigned"}</h2>
+                <p className="text-sm font-bold opacity-80">
                   {completedCount}/{totalCount} done
                   {totalPoints > 0 && <span className="ml-2">• {totalPoints} pts earned</span>}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                <div className={`h-full bg-gradient-to-r ${colorScheme.bg} transition-all duration-500`} style={{ width: `${progress}%` }} />
+            <div className="flex items-center gap-3">
+              <div className="w-24 h-4 bg-background border-2 border-border rounded-md overflow-hidden shadow-[2px_2px_0px_0px_var(--shadow-color)]">
+                <div className="h-full bg-foreground transition-all duration-500" style={{ width: `${progress}%` }} />
               </div>
-              <span className="text-sm font-medium w-12">{Math.round(progress)}%</span>
+              <span className="text-sm font-black w-12 bg-background px-2 py-1 rounded-md border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)]">{Math.round(progress)}%</span>
               {progress === 100 && <span className="text-xl">🎉</span>}
             </div>
           </div>
@@ -440,10 +464,10 @@ function ChoresDashboardContent() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="text-5xl animate-bounce">🧹</div>
-          <p className="text-lg text-muted-foreground">Loading chores...</p>
-        </div>
+        <Card className="p-12 text-center border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)]">
+          <div className="text-6xl animate-bounce mb-4">🧹</div>
+          <p className="text-lg font-black uppercase">Loading chores...</p>
+        </Card>
       </div>
     );
   }
@@ -451,11 +475,11 @@ function ChoresDashboardContent() {
   if (error) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="text-5xl">😢</div>
-          <p className="text-lg text-destructive">Something went wrong</p>
-          <p className="text-sm text-muted-foreground">{error}</p>
-        </div>
+        <Card className="p-12 text-center border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] bg-destructive/10">
+          <div className="text-6xl mb-4">😢</div>
+          <p className="text-xl font-black uppercase text-destructive mb-2">Something went wrong</p>
+          <p className="text-sm font-bold text-muted-foreground">{error}</p>
+        </Card>
       </div>
     );
   }
@@ -468,13 +492,17 @@ function ChoresDashboardContent() {
         {/* Header */}
         <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
           <div>
-            <h1 className="text-3xl font-black tracking-tight flex items-center gap-2">
-              <Sparkles className="h-7 w-7 text-violet-500" />
+            <h1 className="text-4xl font-black uppercase tracking-tight flex items-center gap-3">
+              <Sparkles className="h-8 w-8" />
               Chore Quest
             </h1>
-            <p className="text-muted-foreground mt-1">Complete chores, earn points, become a champion!</p>
+            <p className="text-muted-foreground mt-2 font-bold">Complete chores, earn points, become a champion!</p>
           </div>
-          <Button onClick={handleCreateChore} size="lg" className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-semibold gap-2">
+          <Button 
+            onClick={handleCreateChore} 
+            size="lg" 
+            className="bg-primary text-primary-foreground font-black uppercase border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--shadow-color)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all gap-2"
+          >
             <Plus className="h-5 w-5" />
             New Chore
           </Button>
@@ -482,45 +510,45 @@ function ChoresDashboardContent() {
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="p-4">
+          <Card className="p-4 border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0px_0px_var(--shadow-color)] transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Progress</p>
-                <p className="text-2xl font-bold">{Math.round(stats.progress)}%</p>
+                <p className="text-xs font-bold uppercase text-muted-foreground">Progress</p>
+                <p className="text-3xl font-black">{Math.round(stats.progress)}%</p>
               </div>
               <ProgressRing progress={stats.progress} size={56} />
             </div>
           </Card>
-          <Card className="p-4">
+          <Card className="p-4 border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0px_0px_var(--shadow-color)] transition-all">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-950">
-                <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 rounded-md bg-[var(--event-blue)]/20 border-2 border-border">
+                <Target className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-xs font-bold uppercase text-muted-foreground">Total</p>
+                <p className="text-3xl font-black">{stats.total}</p>
               </div>
             </div>
           </Card>
-          <Card className="p-4">
+          <Card className="p-4 border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0px_0px_var(--shadow-color)] transition-all">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              <div className="p-2 rounded-md bg-accent/20 border-2 border-border">
+                <CheckCircle2 className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Done</p>
-                <p className="text-2xl font-bold text-emerald-600">{stats.completed}</p>
+                <p className="text-xs font-bold uppercase text-muted-foreground">Done</p>
+                <p className="text-3xl font-black">{stats.completed}</p>
               </div>
             </div>
           </Card>
-          <Card className="p-4 bg-gradient-to-br from-amber-400 to-orange-500 text-white border-0">
+          <Card className="p-4 bg-secondary text-secondary-foreground border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0px_0px_var(--shadow-color)] transition-all">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-white/20">
+              <div className="p-2 rounded-md bg-foreground/20 border-2 border-border">
                 <Star className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-white/80">Points</p>
-                <p className="text-2xl font-bold">{stats.totalPoints}</p>
+                <p className="text-xs font-black uppercase opacity-80">Points</p>
+                <p className="text-3xl font-black">{stats.totalPoints}</p>
               </div>
             </div>
           </Card>
@@ -528,24 +556,24 @@ function ChoresDashboardContent() {
 
         {/* Filters */}
         <div className="flex items-center gap-3 mb-6 flex-wrap">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm font-black uppercase text-muted-foreground">
             <Filter className="h-4 w-4" />
             <span>Filter:</span>
           </div>
           <Button
-            variant={showCompleted ? "secondary" : "outline"}
+            variant={showCompleted ? "default" : "outline"}
             size="sm"
             onClick={() => setShowCompleted(!showCompleted)}
-            className="rounded-full"
+            className="rounded-md border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_0px_var(--shadow-color)] transition-all font-bold uppercase"
           >
             {showCompleted ? "All chores" : "Active only"}
           </Button>
           <select
             value={selectedMember}
             onChange={(e) => setSelectedMember(e.target.value === "all" ? "all" : parseInt(e.target.value))}
-            className="h-9 px-3 rounded-full border text-sm bg-background"
+            className="h-9 px-3 rounded-md border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] text-sm font-bold bg-card focus:outline-none focus:ring-0 focus:border-border"
           >
-            <option value="all">Everyone</option>
+            <option value="all">👥 Everyone</option>
             {familyMembers.map((m) => (
               <option key={m.id} value={m.id}>{m.icon_emoji || "👤"} {m.name}</option>
             ))}
@@ -554,18 +582,56 @@ function ChoresDashboardContent() {
 
         {/* Content */}
         {filteredChores.length === 0 ? (
-          <Card className="py-12 text-center">
-            <div className="text-5xl mb-3">🎯</div>
-            <h3 className="text-xl font-bold mb-2">
-              {chores.length === 0 ? "No chores yet!" : "All caught up!"}
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              {chores.length === 0 ? "Create your first chore to get started" : "Great job completing all your tasks! 🎉"}
-            </p>
-            {chores.length === 0 && (
-              <Button onClick={handleCreateChore}><Plus className="mr-2 h-4 w-4" />Create Chore</Button>
-            )}
-          </Card>
+          <div className="relative">
+            <Card className="py-20 text-center border-2 border-border shadow-[8px_8px_0px_0px_var(--shadow-color)] overflow-hidden bg-gradient-to-br from-background to-muted/20">
+              {/* Decorative corners */}
+              <div className="absolute top-4 left-4 w-12 h-12 border-t-4 border-l-4 border-border rounded-tl-xl" />
+              <div className="absolute top-4 right-4 w-12 h-12 border-t-4 border-r-4 border-border rounded-tr-xl" />
+              <div className="absolute bottom-4 left-4 w-12 h-12 border-b-4 border-l-4 border-border rounded-bl-xl" />
+              <div className="absolute bottom-4 right-4 w-12 h-12 border-b-4 border-r-4 border-border rounded-br-xl" />
+              
+              <div className="relative z-10 max-w-md mx-auto px-4">
+                <div className="text-8xl mb-6 animate-bounce inline-block">
+                  {chores.length === 0 ? "🎯" : "🎉"}
+                </div>
+                
+                <div className="mb-6">
+                  <h3 className="text-4xl font-black uppercase mb-3 tracking-tight">
+                    {chores.length === 0 ? "No chores yet!" : "All caught up!"}
+                  </h3>
+                  <div className="inline-block px-4 py-2 bg-secondary text-secondary-foreground border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] rounded-xl mb-4">
+                    <p className="text-sm font-black uppercase">
+                      {chores.length === 0 ? "Ready to get started?" : "You're crushing it!"}
+                    </p>
+                  </div>
+                  <p className="text-muted-foreground font-bold text-lg">
+                    {chores.length === 0 
+                      ? "Create your first chore and start earning points!" 
+                      : "Great job completing all your tasks!"}
+                  </p>
+                </div>
+                
+                {chores.length === 0 && (
+                  <Button 
+                    onClick={handleCreateChore}
+                    size="lg"
+                    className="font-black uppercase text-lg px-8 py-6 h-auto border-2 border-border bg-primary text-primary-foreground shadow-[4px_4px_0px_0px_var(--shadow-color)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--shadow-color)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all"
+                  >
+                    <Plus className="mr-2 h-6 w-6" />
+                    Create Chore
+                  </Button>
+                )}
+              </div>
+              
+              {/* Background pattern */}
+              <div className="absolute inset-0 opacity-5 pointer-events-none">
+                <div className="absolute top-10 left-10 text-6xl">✨</div>
+                <div className="absolute top-20 right-20 text-6xl">⭐</div>
+                <div className="absolute bottom-20 left-20 text-6xl">🏆</div>
+                <div className="absolute bottom-10 right-10 text-6xl">💪</div>
+              </div>
+            </Card>
+          </div>
         ) : (
           <div className="space-y-6">
             {choresByAssignee.unassigned.length > 0 && (
@@ -602,12 +668,12 @@ function ChoresDashboardContent() {
 
         {/* All complete toast */}
         {stats.total > 0 && stats.completed === stats.total && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
-            <Card className="px-5 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white border-0 shadow-xl flex items-center gap-3">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 animate-bounce">
+            <Card className="px-6 py-4 bg-accent text-accent-foreground border-2 border-border shadow-[8px_8px_0px_0px_var(--shadow-color)] flex items-center gap-3">
               <PartyPopper className="h-6 w-6" />
               <div>
-                <p className="font-bold">All done!</p>
-                <p className="text-sm text-white/80">You&apos;re a chore champion! 🏆</p>
+                <p className="font-black uppercase">All done!</p>
+                <p className="text-sm font-bold opacity-80">You&apos;re a chore champion! 🏆</p>
               </div>
             </Card>
           </div>

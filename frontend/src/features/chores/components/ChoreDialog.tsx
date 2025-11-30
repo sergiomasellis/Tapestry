@@ -392,8 +392,8 @@ export function ChoreDialog({
 
               {/* Points - Visual Star Rating */}
               <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2">
-                  <Star className="h-4 w-4 text-amber-500" />
+                <label className="text-xs font-black uppercase flex items-center gap-2">
+                  <Star className="h-4 w-4" />
                   Points ({pointValue})
                 </label>
                 <div className="flex items-center gap-1">
@@ -402,9 +402,9 @@ export function ChoreDialog({
                       key={value}
                       type="button"
                       onClick={() => setPointValue(value)}
-                      className={`w-8 h-8 rounded-full text-sm font-black border-2 border-border transition-all ${
+                      className={`w-8 h-8 rounded-md text-sm font-black border-2 border-border transition-all ${
                         value <= pointValue
-                          ? "bg-amber-400 text-black scale-100 shadow-[2px_2px_0px_0px_var(--shadow-color)]"
+                          ? "bg-secondary text-secondary-foreground scale-100 shadow-[2px_2px_0px_0px_var(--shadow-color)]"
                           : "bg-muted text-muted-foreground hover:bg-muted/80 scale-90"
                       }`}
                     >
@@ -421,16 +421,16 @@ export function ChoreDialog({
             <div className="space-y-6">
               {/* Assign To - Multi-select */}
               <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-500" />
+            <label className="text-xs font-black uppercase flex items-center gap-2">
+              <Users className="h-4 w-4" />
               Assign to
               {assignedToIds.length > 0 && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs font-bold opacity-60">
                   ({assignedToIds.length} selected)
                 </span>
               )}
             </label>
-            <p className="text-xs text-muted-foreground -mt-1">
+            <p className="text-xs font-bold text-muted-foreground -mt-1">
               Select one or more family members
             </p>
             <div className="flex flex-wrap gap-2">
@@ -455,7 +455,7 @@ export function ChoreDialog({
               })}
             </div>
                 {assignedToIds.length === 0 && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
                     💡 No one selected — anyone can complete this chore
                   </p>
                 )}
@@ -463,44 +463,44 @@ export function ChoreDialog({
 
               {/* Group vs Individual toggle - only show when multiple people assigned */}
               {assignedToIds.length > 1 && (
-                <div className="rounded-xl border-2 overflow-hidden">
-                  <div className="p-3 space-y-3">
-                    <p className="text-sm font-medium flex items-center gap-2">
-                      <Users2 className="h-4 w-4 text-violet-500" />
+                <div className="rounded-xl border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] overflow-hidden bg-card">
+                  <div className="p-4 space-y-3">
+                    <p className="text-sm font-black uppercase flex items-center gap-2">
+                      <Users2 className="h-4 w-4" />
                       Completion type
                     </p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
                         onClick={() => setIsGroupChore(true)}
-                        className={`p-3 rounded-lg text-left transition-all border-2 ${
+                        className={`p-4 rounded-md text-left transition-all border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_0px_var(--shadow-color)] ${
                           isGroupChore
-                            ? "bg-violet-50 dark:bg-violet-950 border-violet-500"
-                            : "border-muted hover:border-violet-300"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background hover:bg-muted"
                         }`}
                       >
-                        <div className="flex items-center gap-2 mb-1">
-                          <Users className="h-4 w-4" />
-                          <span className="font-medium text-sm">Group</span>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Users className="h-5 w-5" />
+                          <span className="font-black text-sm uppercase">Group</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs font-bold opacity-80">
                           One person completes it for everyone
                         </p>
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsGroupChore(false)}
-                        className={`p-3 rounded-lg text-left transition-all border-2 ${
+                        className={`p-4 rounded-md text-left transition-all border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_0px_var(--shadow-color)] ${
                           !isGroupChore
-                            ? "bg-violet-50 dark:bg-violet-950 border-violet-500"
-                            : "border-muted hover:border-violet-300"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background hover:bg-muted"
                         }`}
                       >
-                        <div className="flex items-center gap-2 mb-1">
-                          <User className="h-4 w-4" />
-                          <span className="font-medium text-sm">Individual</span>
+                        <div className="flex items-center gap-2 mb-2">
+                          <User className="h-5 w-5" />
+                          <span className="font-black text-sm uppercase">Individual</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs font-bold opacity-80">
                           Each person completes their own
                         </p>
                       </button>
@@ -517,8 +517,8 @@ export function ChoreDialog({
                 {/* Due Date */}
                 {!isEditing && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-green-500" />
+                    <label className="text-xs font-black uppercase flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
                       Due this week starting
                     </label>
                     <Input
@@ -531,31 +531,31 @@ export function ChoreDialog({
                 )}
 
                 {/* Recurring Toggle */}
-                <div className="rounded-xl border-2 overflow-hidden">
+                <div className="rounded-xl border-2 border-border shadow-[4px_4px_0px_0px_var(--shadow-color)] overflow-hidden bg-card">
                   <button
                     type="button"
                     onClick={() => setIsRecurring(!isRecurring)}
-                    className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${
-                      isRecurring ? "bg-purple-50 dark:bg-purple-950" : "hover:bg-muted/50"
+                    className={`w-full px-4 py-4 flex items-center justify-between transition-all ${
+                      isRecurring ? "bg-secondary text-secondary-foreground" : "hover:bg-muted"
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${isRecurring ? "bg-purple-100 dark:bg-purple-900" : "bg-muted"}`}>
-                        <Repeat className={`h-4 w-4 ${isRecurring ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground"}`} />
+                      <div className={`p-2 rounded-md border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] ${isRecurring ? "bg-foreground text-background" : "bg-muted"}`}>
+                        <Repeat className="h-5 w-5" />
                       </div>
                       <div className="text-left">
-                        <p className="font-medium">Recurring chore</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="font-black uppercase text-sm">Recurring chore</p>
+                        <p className="text-xs font-bold opacity-80">
                           {isRecurring ? getRecurrenceSummary() : "Repeats on a schedule"}
                         </p>
                       </div>
                     </div>
-                    <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${isRecurring ? "rotate-180" : ""}`} />
+                    <ChevronDown className={`h-5 w-5 transition-transform ${isRecurring ? "rotate-180" : ""}`} />
                   </button>
 
                   {/* Recurring Options */}
                   {isRecurring && (
-                    <div className="p-4 border-t-2 space-y-4 bg-muted/30">
+                    <div className="p-4 border-t-2 border-border space-y-4 bg-muted/20">
                     {/* Frequency Type */}
                     <div className="flex gap-2">
                       {(["daily", "weekly", "monthly"] as const).map((type) => (
@@ -563,10 +563,10 @@ export function ChoreDialog({
                           key={type}
                           type="button"
                           onClick={() => setRecurrenceType(type)}
-                          className={`flex-1 py-2.5 rounded-lg text-sm font-medium capitalize transition-all ${
+                          className={`flex-1 py-3 rounded-md text-sm font-black uppercase transition-all border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_0px_var(--shadow-color)] ${
                             recurrenceType === type
-                              ? "bg-purple-600 text-white"
-                              : "bg-background border-2 hover:border-purple-300"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-background"
                           }`}
                         >
                           {type}
@@ -578,17 +578,17 @@ export function ChoreDialog({
                     {recurrenceType === "daily" && (
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium">How many times per day?</label>
+                          <label className="text-xs font-black uppercase text-muted-foreground">How many times per day?</label>
                           <div className="flex gap-2">
                             {[1, 2, 3, 4, 5].map((count) => (
                               <button
                                 key={count}
                                 type="button"
                                 onClick={() => setRecurrenceCount(count)}
-                                className={`flex-1 py-2.5 rounded-lg font-bold transition-all ${
+                                className={`flex-1 py-3 rounded-md font-black transition-all border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_0px_var(--shadow-color)] ${
                                   recurrenceCount === count
-                                    ? "bg-purple-600 text-white"
-                                    : "bg-background border-2 hover:border-purple-300"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-background"
                                 }`}
                               >
                                 {count}x
@@ -597,7 +597,7 @@ export function ChoreDialog({
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-medium">When?</label>
+                          <label className="text-xs font-black uppercase text-muted-foreground">When?</label>
                           <Select value={recurrenceTimeOfDay} onValueChange={(v) => setRecurrenceTimeOfDay(v as typeof recurrenceTimeOfDay)}>
                             <SelectTrigger className="h-11">
                               <SelectValue />
@@ -617,18 +617,18 @@ export function ChoreDialog({
                     {recurrenceType === "weekly" && (
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium">Which days?</label>
-                          <div className="flex gap-1.5">
+                          <label className="text-xs font-black uppercase text-muted-foreground">Which days?</label>
+                          <div className="flex gap-2">
                             {DAYS_OF_WEEK.map((day) => (
                               <button
                                 key={day.value}
                                 type="button"
                                 onClick={() => handleDayToggle(day.value)}
                                 title={day.full}
-                                className={`w-10 h-10 rounded-full text-sm font-bold transition-all ${
+                                className={`w-10 h-10 rounded-md text-sm font-black transition-all border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_0px_var(--shadow-color)] ${
                                   recurrenceDays.includes(day.value)
-                                    ? "bg-purple-600 text-white"
-                                    : "bg-background border-2 hover:border-purple-300"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-background"
                                 }`}
                               >
                                 {day.label}
@@ -637,17 +637,17 @@ export function ChoreDialog({
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-medium">Repeat every</label>
+                          <label className="text-xs font-black uppercase text-muted-foreground">Repeat every</label>
                           <div className="flex gap-2">
                             {[1, 2, 3, 4].map((interval) => (
                               <button
                                 key={interval}
                                 type="button"
                                 onClick={() => setRecurrenceInterval(interval)}
-                                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                                className={`flex-1 py-3 rounded-md text-sm font-black transition-all border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_0px_var(--shadow-color)] ${
                                   recurrenceInterval === interval
-                                    ? "bg-purple-600 text-white"
-                                    : "bg-background border-2 hover:border-purple-300"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-background"
                                 }`}
                               >
                                 {interval} week{interval > 1 ? "s" : ""}
@@ -661,17 +661,17 @@ export function ChoreDialog({
                     {/* Monthly Options */}
                     {recurrenceType === "monthly" && (
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Repeat every</label>
+                        <label className="text-xs font-black uppercase text-muted-foreground">Repeat every</label>
                         <div className="flex gap-2">
                           {[1, 2, 3, 6].map((interval) => (
                             <button
                               key={interval}
                               type="button"
                               onClick={() => setRecurrenceInterval(interval)}
-                              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                              className={`flex-1 py-3 rounded-md text-sm font-black transition-all border-2 border-border shadow-[2px_2px_0px_0px_var(--shadow-color)] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0px_0px_var(--shadow-color)] ${
                                 recurrenceInterval === interval
-                                  ? "bg-purple-600 text-white"
-                                  : "bg-background border-2 hover:border-purple-300"
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-background"
                               }`}
                             >
                               {interval} mo{interval > 1 ? "s" : ""}
@@ -683,14 +683,14 @@ export function ChoreDialog({
 
                     {/* End Date */}
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">
+                      <label className="text-xs font-black uppercase text-muted-foreground">
                         End date (optional)
                       </label>
                       <Input
                         type="date"
                         value={recurrenceEndDate}
                         onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                        className="h-10"
+                        className="h-11"
                       />
                     </div>
                   </div>
