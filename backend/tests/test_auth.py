@@ -111,7 +111,7 @@ class TestAuthenticated:
     def test_get_current_user_no_token(self, client):
         """Test accessing protected endpoint without token."""
         response = client.get("/api/auth/me")
-        assert response.status_code == 403  # Forbidden (no auth header)
+        assert response.status_code == 401  # Unauthorized (no auth header)
 
     def test_get_current_user_invalid_token(self, client):
         """Test accessing protected endpoint with invalid token."""
