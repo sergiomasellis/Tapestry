@@ -237,7 +237,7 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
         select(PasswordResetToken).where(
             and_(
                 PasswordResetToken.token == payload.token,
-                PasswordResetToken.used == False,
+                ~PasswordResetToken.used,
                 PasswordResetToken.expires_at > datetime.utcnow()
             )
         )
@@ -268,7 +268,7 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
         select(PasswordResetToken).where(
             and_(
                 PasswordResetToken.user_id == user.id,
-                PasswordResetToken.used == False,
+                ~PasswordResetToken.used,
                 PasswordResetToken.id != reset_token.id
             )
         )
@@ -316,7 +316,7 @@ def scan_qr_code(payload: QRCodeScanRequest, db: Session = Depends(get_db)):
         select(QRCodeSession).where(
             and_(
                 QRCodeSession.session_token == payload.session_token,
-                QRCodeSession.scanned == False,
+                ~QRCodeSession.scanned,
                 QRCodeSession.expires_at > datetime.utcnow()
             )
         )

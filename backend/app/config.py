@@ -3,11 +3,9 @@ Application configuration with validation.
 All configuration is loaded from environment variables with sensible defaults.
 """
 
-import os
 import sys
-import logging
-from typing import List, Optional
-from pydantic import BaseModel, Field, field_validator
+from typing import List
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 

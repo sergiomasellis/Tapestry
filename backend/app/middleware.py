@@ -10,7 +10,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from .logging_config import set_request_id, get_request_id
+from .logging_config import set_request_id
 
 logger = logging.getLogger(__name__)
 

@@ -39,3 +39,4 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_password_reset_tokens_token'), table_name='password_reset_tokens')
     op.drop_table('password_reset_tokens')
 
+

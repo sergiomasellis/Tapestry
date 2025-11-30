@@ -3,25 +3,24 @@ Tapestry API - Family calendar, chores, and rewards.
 Production-ready FastAPI application with security, logging, and rate limiting.
 """
 
-import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 # Load environment variables before importing config
 load_dotenv()
 
-from fastapi import FastAPI, Request, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
+from fastapi import FastAPI, Request, status  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
+from fastapi.exceptions import RequestValidationError  # noqa: E402
+from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
+from slowapi import Limiter  # noqa: E402
+from slowapi.util import get_remote_address  # noqa: E402
+from slowapi.errors import RateLimitExceeded  # noqa: E402
 
 # Import configuration and logging first
-from .config import settings
-from .logging_config import setup_logging, get_request_id
+from .config import settings  # noqa: E402
+from .logging_config import setup_logging, get_request_id  # noqa: E402
 
 # Setup logging
 logger = setup_logging(
@@ -31,7 +30,7 @@ logger = setup_logging(
 )
 
 # Import middleware
-from .middleware import (
+from .middleware import (  # noqa: E402
     SecurityHeadersMiddleware,
     RequestIdMiddleware,
     RequestLoggingMiddleware,
@@ -39,8 +38,8 @@ from .middleware import (
 )
 
 # Import routers
-from .routers import auth, users, families, calendars, chores, points, goals
-from .db.session import engine, Base
+from .routers import auth, users, families, calendars, chores, points, goals  # noqa: E402
+from .db.session import engine, Base  # noqa: E402
 
 # Initialize rate limiter
 limiter = Limiter(

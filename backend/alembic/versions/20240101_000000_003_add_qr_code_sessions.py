@@ -40,3 +40,4 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_qr_code_sessions_session_token'), table_name='qr_code_sessions')
     op.drop_table('qr_code_sessions')
 
+
