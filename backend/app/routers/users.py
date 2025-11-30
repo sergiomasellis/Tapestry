@@ -16,51 +16,46 @@ router = APIRouter()
 def create_user(
     payload: UserCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Create a new user (family member). Requires authentication and family membership."""
     # Validate password requirement based on role
     if payload.role == "parent":
         if not payload.password:
             raise HTTPException(
-                status_code=400,
-                detail="Password is required for parents"
+                status_code=400, detail="Password is required for parents"
             )
         if not payload.email:
-            raise HTTPException(
-                status_code=400,
-                detail="Email is required for parents"
-            )
-    
+            raise HTTPException(status_code=400, detail="Email is required for parents")
+
     # Check if email already exists (only if provided)
     if payload.email:
-        existing = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
+        existing = db.execute(
+            select(User).where(User.email == payload.email)
+        ).scalar_one_or_none()
         if existing:
             raise HTTPException(status_code=400, detail="Email already registered")
-    
+
     # User must belong to a family to add members
     if not current_user.family_id:
         raise HTTPException(
-            status_code=400,
-            detail="You must belong to a family to add members"
+            status_code=400, detail="You must belong to a family to add members"
         )
-    
+
     # Validate family_id matches current user's family
     if payload.family_id is not None and payload.family_id != current_user.family_id:
         raise HTTPException(
-            status_code=403,
-            detail="Cannot add members to a different family"
+            status_code=403, detail="Cannot add members to a different family"
         )
-    
+
     # Use current user's family if not specified
     family_id = payload.family_id or current_user.family_id
     family = db.get(FamilyGroup, family_id)
     if not family:
         raise HTTPException(
-            status_code=404, 
-            detail=f"Family with id {family_id} not found"
+            status_code=404, detail=f"Family with id {family_id} not found"
         )
-    
+
     # For children, use a placeholder password hash (they can't log in)
     # For parents, use the provided password
     if payload.role == "child":
@@ -70,7 +65,7 @@ def create_user(
         password_hash = get_password_hash(placeholder_password)
     else:
         password_hash = get_password_hash(payload.password)
-    
+
     user = User(
         family_id=family_id,
         name=payload.name,
@@ -91,17 +86,17 @@ def create_user(
 def get_user(
     user_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Get a user by ID. Requires authentication and same family membership."""
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Check if user belongs to the same family or is viewing themselves
     if user.family_id != current_user.family_id and user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return user
 
 
@@ -110,17 +105,17 @@ def update_user(
     user_id: int,
     payload: UserUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Update a user. Users can only update themselves or family members."""
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Check if user belongs to the same family or is updating themselves
     if user.family_id != current_user.family_id and user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(user, field, value)
     db.commit()
@@ -132,21 +127,21 @@ def update_user(
 def delete_user(
     user_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Delete a user. Requires authentication and same family membership."""
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Check if user belongs to the same family
     if user.family_id != current_user.family_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     # Prevent deleting yourself
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
-    
+
     db.delete(user)
     db.commit()
     return {"message": "deleted"}
@@ -154,11 +149,14 @@ def delete_user(
 
 @router.get("/", response_model=List[UserOut])
 def list_users(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """List users in the current user's family. Requires authentication."""
     if not current_user.family_id:
         return []
-    rows = db.execute(select(User).where(User.family_id == current_user.family_id)).scalars().all()
+    rows = (
+        db.execute(select(User).where(User.family_id == current_user.family_id))
+        .scalars()
+        .all()
+    )
     return rows

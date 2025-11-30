@@ -11,77 +11,91 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     """Application settings with validation."""
-    
+
     # Application
     app_name: str = Field(default="Tapestry API", description="Application name")
     app_version: str = Field(default="0.1.0", description="Application version")
-    environment: str = Field(default="development", description="Environment (development, staging, production)")
+    environment: str = Field(
+        default="development",
+        description="Environment (development, staging, production)",
+    )
     debug: bool = Field(default=False, description="Debug mode")
-    
+
     # Security
     secret_key: str = Field(..., description="Secret key for JWT signing")
     algorithm: str = Field(default="HS256", description="JWT algorithm")
-    access_token_expire_minutes: int = Field(default=10080, description="Token expiration in minutes (default: 7 days)")
-    
+    access_token_expire_minutes: int = Field(
+        default=10080, description="Token expiration in minutes (default: 7 days)"
+    )
+
     # CORS
-    cors_origins: str = Field(default="http://localhost:3000,http://localhost:8000", description="Comma-separated CORS origins")
-    
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://localhost:8000",
+        description="Comma-separated CORS origins",
+    )
+
     # Database
-    database_url: str = Field(default="sqlite:///./data.db", description="Database connection URL")
+    database_url: str = Field(
+        default="sqlite:///./data.db", description="Database connection URL"
+    )
     db_pool_size: int = Field(default=5, description="Database connection pool size")
     db_max_overflow: int = Field(default=10, description="Max overflow connections")
-    
+
     # Rate limiting
     rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
     rate_limit_requests: int = Field(default=100, description="Max requests per window")
     rate_limit_window: str = Field(default="1 minute", description="Rate limit window")
-    
+
     # Logging
     log_level: str = Field(default="INFO", description="Logging level")
     log_format: str = Field(default="json", description="Log format (json or text)")
-    
+
     # Security headers
-    enable_security_headers: bool = Field(default=True, description="Enable security headers")
-    
-    @field_validator('environment')
+    enable_security_headers: bool = Field(
+        default=True, description="Enable security headers"
+    )
+
+    @field_validator("environment")
     @classmethod
     def validate_environment(cls, v: str) -> str:
-        allowed = ['development', 'staging', 'production']
+        allowed = ["development", "staging", "production"]
         if v not in allowed:
             raise ValueError(f"environment must be one of {allowed}")
         return v
-    
-    @field_validator('log_level')
+
+    @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:
-        allowed = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        allowed = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         v = v.upper()
         if v not in allowed:
             raise ValueError(f"log_level must be one of {allowed}")
         return v
-    
-    @field_validator('secret_key')
+
+    @field_validator("secret_key")
     @classmethod
     def validate_secret_key(cls, v: str) -> str:
         if len(v) < 32:
             raise ValueError("secret_key must be at least 32 characters long")
         return v
-    
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins into a list."""
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
-    
+        return [
+            origin.strip() for origin in self.cors_origins.split(",") if origin.strip()
+        ]
+
     @property
     def is_production(self) -> bool:
         """Check if running in production."""
         return self.environment == "production"
-    
+
     @property
     def is_sqlite(self) -> bool:
         """Check if using SQLite database."""
         return self.database_url.startswith("sqlite")
-    
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -98,19 +112,39 @@ def get_settings() -> Settings:
     except Exception as e:
         print(f"Configuration error: {e}", file=sys.stderr)
         print("\nRequired environment variables:", file=sys.stderr)
-        print("  SECRET_KEY - Secret key for JWT signing (min 32 characters)", file=sys.stderr)
+        print(
+            "  SECRET_KEY - Secret key for JWT signing (min 32 characters)",
+            file=sys.stderr,
+        )
         print("\nOptional environment variables:", file=sys.stderr)
-        print("  ENVIRONMENT - development, staging, or production (default: development)", file=sys.stderr)
-        print("  DATABASE_URL - Database connection URL (default: sqlite:///./data.db)", file=sys.stderr)
+        print(
+            "  ENVIRONMENT - development, staging, or production (default: development)",
+            file=sys.stderr,
+        )
+        print(
+            "  DATABASE_URL - Database connection URL (default: sqlite:///./data.db)",
+            file=sys.stderr,
+        )
         print("  CORS_ORIGINS - Comma-separated allowed origins", file=sys.stderr)
-        print("  LOG_LEVEL - DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)", file=sys.stderr)
+        print(
+            "  LOG_LEVEL - DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)",
+            file=sys.stderr,
+        )
         print("  LOG_FORMAT - json or text (default: json)", file=sys.stderr)
-        print("  RATE_LIMIT_ENABLED - Enable rate limiting (default: true)", file=sys.stderr)
-        print("  RATE_LIMIT_REQUESTS - Max requests per window (default: 100)", file=sys.stderr)
-        print("  RATE_LIMIT_WINDOW - Rate limit window (default: 1 minute)", file=sys.stderr)
+        print(
+            "  RATE_LIMIT_ENABLED - Enable rate limiting (default: true)",
+            file=sys.stderr,
+        )
+        print(
+            "  RATE_LIMIT_REQUESTS - Max requests per window (default: 100)",
+            file=sys.stderr,
+        )
+        print(
+            "  RATE_LIMIT_WINDOW - Rate limit window (default: 1 minute)",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 
 # Create a singleton instance
 settings = get_settings()
-

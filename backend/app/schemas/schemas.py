@@ -152,7 +152,9 @@ class ChoreBase(BaseModel):
     emoji: Optional[str] = None
     point_value: int
     assigned_to: Optional[int] = None  # Legacy single assignee
-    assigned_to_ids: Optional[str] = None  # Comma-separated user IDs for multiple assignees
+    assigned_to_ids: Optional[str] = (
+        None  # Comma-separated user IDs for multiple assignees
+    )
     is_group_chore: bool = True  # True = one completion for all, False = each person completes individually
     completed: bool = False
     completed_by_ids: Optional[str] = None  # For individual chores: who has completed
@@ -162,11 +164,17 @@ class ChoreBase(BaseModel):
     recurrence_type: Optional[Literal["daily", "weekly", "monthly"]] = None
     recurrence_interval: Optional[int] = None  # every N days/weeks/months
     recurrence_count: Optional[int] = None  # times per day (e.g., 2x per day)
-    recurrence_days: Optional[str] = None  # comma-separated days of week (0-6) for weekly
-    recurrence_time_of_day: Optional[Literal["morning", "afternoon", "evening", "anytime"]] = None
+    recurrence_days: Optional[str] = (
+        None  # comma-separated days of week (0-6) for weekly
+    )
+    recurrence_time_of_day: Optional[
+        Literal["morning", "afternoon", "evening", "anytime"]
+    ] = None
     recurrence_end_date: Optional[date] = None
     parent_chore_id: Optional[int] = None
-    max_completions: Optional[int] = None  # Max times this chore can be completed (for recurring)
+    max_completions: Optional[int] = (
+        None  # Max times this chore can be completed (for recurring)
+    )
 
 
 class ChoreCreate(ChoreBase):
@@ -189,7 +197,9 @@ class ChoreUpdate(BaseModel):
     recurrence_interval: Optional[int] = None
     recurrence_count: Optional[int] = None
     recurrence_days: Optional[str] = None
-    recurrence_time_of_day: Optional[Literal["morning", "afternoon", "evening", "anytime"]] = None
+    recurrence_time_of_day: Optional[
+        Literal["morning", "afternoon", "evening", "anytime"]
+    ] = None
     recurrence_end_date: Optional[date] = None
     parent_chore_id: Optional[int] = None
     max_completions: Optional[int] = None

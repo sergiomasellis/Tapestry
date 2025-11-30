@@ -35,4 +35,3 @@ def test_health_with_custom_request_id(client):
     custom_id = "test-request-123"
     response = client.get("/healthz", headers={"X-Request-ID": custom_id})
     assert response.headers["X-Request-ID"] == custom_id
-

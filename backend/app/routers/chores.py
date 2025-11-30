@@ -6,7 +6,13 @@ from typing import List
 
 from ..db.session import get_db
 from ..models.models import Chore, Point, User, ChoreCompletion
-from ..schemas.schemas import ChoreCreate, ChoreOut, ChoreUpdate, Message, ChoreCompletionOut
+from ..schemas.schemas import (
+    ChoreCreate,
+    ChoreOut,
+    ChoreUpdate,
+    Message,
+    ChoreCompletionOut,
+)
 from .auth import get_current_user
 
 router = APIRouter()
@@ -14,13 +20,16 @@ router = APIRouter()
 
 @router.get("/", response_model=List[ChoreOut])
 def list_chores(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """List chores for the user's family. Requires authentication."""
     if not current_user.family_id:
         return []
-    rows = db.execute(select(Chore).where(Chore.family_id == current_user.family_id)).scalars().all()
+    rows = (
+        db.execute(select(Chore).where(Chore.family_id == current_user.family_id))
+        .scalars()
+        .all()
+    )
     return rows
 
 
@@ -28,19 +37,21 @@ def list_chores(
 def create_chore(
     payload: ChoreCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Create a new chore. Requires authentication and family membership."""
     if not current_user.family_id:
         raise HTTPException(status_code=400, detail="User must belong to a family")
-    
+
     if payload.point_value < 1 or payload.point_value > 10:
         raise HTTPException(status_code=400, detail="point_value must be 1..10")
-    
+
     # Ensure chore belongs to user's family
     if payload.family_id != current_user.family_id:
-        raise HTTPException(status_code=403, detail="Cannot create chore for different family")
-    
+        raise HTTPException(
+            status_code=403, detail="Cannot create chore for different family"
+        )
+
     chore = Chore(
         family_id=payload.family_id,
         title=payload.title,
@@ -75,17 +86,17 @@ def update_chore(
     chore_id: int,
     payload: ChoreUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Update a chore. Requires authentication and family membership."""
     chore = db.get(Chore, chore_id)
     if not chore:
         raise HTTPException(status_code=404, detail="Chore not found")
-    
+
     # Check if user belongs to the same family
     if current_user.family_id != chore.family_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     updates = payload.model_dump(exclude_unset=True)
     if "point_value" in updates:
         pv = updates["point_value"]
@@ -102,17 +113,17 @@ def update_chore(
 def delete_chore(
     chore_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Delete a chore. Requires authentication and family membership."""
     chore = db.get(Chore, chore_id)
     if not chore:
         raise HTTPException(status_code=404, detail="Chore not found")
-    
+
     # Check if user belongs to the same family
     if current_user.family_id != chore.family_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     db.delete(chore)
     db.commit()
     return Message(message="deleted")
@@ -122,7 +133,7 @@ def delete_chore(
 def get_chore_completions(
     chore_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Get completion history for a chore (particularly useful for recurring chores).
@@ -131,11 +142,11 @@ def get_chore_completions(
     chore = db.get(Chore, chore_id)
     if not chore:
         raise HTTPException(status_code=404, detail="Chore not found")
-    
+
     # Check if user belongs to the same family
     if current_user.family_id != chore.family_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     completions = (
         db.query(ChoreCompletion, User)
         .join(User, ChoreCompletion.user_id == User.id)
@@ -143,7 +154,7 @@ def get_chore_completions(
         .order_by(ChoreCompletion.completed_at.desc())
         .all()
     )
-    
+
     return [
         ChoreCompletionOut(
             id=completion.id,
@@ -161,7 +172,7 @@ def get_chore_completions(
 def complete_chore(
     chore_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Mark a chore as complete. Behavior depends on chore type:
@@ -172,32 +183,37 @@ def complete_chore(
     chore = db.get(Chore, chore_id)
     if not chore:
         raise HTTPException(status_code=404, detail="Chore not found")
-    
+
     # Check if user belongs to the same family
     if current_user.family_id != chore.family_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     # Get all assignee IDs
     assignee_ids = []
     if chore.assigned_to_ids:
         assignee_ids = [int(x) for x in chore.assigned_to_ids.split(",") if x.strip()]
     elif chore.assigned_to:
         assignee_ids = [chore.assigned_to]
-    
+
     # RECURRING CHORE: Create a completion record if under max limit
     if chore.is_recurring:
         # Check current completion count
-        current_completions = db.query(ChoreCompletion).filter(
-            ChoreCompletion.chore_id == chore_id
-        ).count()
-        
+        current_completions = (
+            db.query(ChoreCompletion)
+            .filter(ChoreCompletion.chore_id == chore_id)
+            .count()
+        )
+
         # Check if max completions reached
-        if chore.max_completions is not None and current_completions >= chore.max_completions:
+        if (
+            chore.max_completions is not None
+            and current_completions >= chore.max_completions
+        ):
             raise HTTPException(
                 status_code=400,
-                detail=f"Maximum completions reached ({chore.max_completions}). This chore cannot be completed again."
+                detail=f"Maximum completions reached ({chore.max_completions}). This chore cannot be completed again.",
             )
-        
+
         # Create a completion record for the current user
         completion = ChoreCompletion(
             chore_id=chore_id,
@@ -206,7 +222,7 @@ def complete_chore(
             points_awarded=chore.point_value,
         )
         db.add(completion)
-        
+
         # Also add to Points table for leaderboard compatibility
         point = Point(
             user_id=current_user.id,
@@ -215,31 +231,35 @@ def complete_chore(
             awarded_at=datetime.utcnow(),
         )
         db.add(point)
-        
+
         # Check if we've now hit the max - if so, mark as completed
         new_completion_count = current_completions + 1
-        if chore.max_completions is not None and new_completion_count >= chore.max_completions:
+        if (
+            chore.max_completions is not None
+            and new_completion_count >= chore.max_completions
+        ):
             chore.completed = True
         else:
             chore.completed = False
-        
+
         db.commit()
         db.refresh(chore)
         return chore
-    
+
     # NON-RECURRING CHORE LOGIC (existing behavior)
     if chore.is_group_chore:
         # GROUP CHORE: Toggle completion for everyone
         chore.completed = not chore.completed
-        
+
         if chore.completed:
             # Award points to all assignees (or current user if unassigned)
             users_to_award = assignee_ids if assignee_ids else [current_user.id]
             for user_id in users_to_award:
-                existing_point = db.query(Point).filter(
-                    Point.chore_id == chore_id,
-                    Point.user_id == user_id
-                ).first()
+                existing_point = (
+                    db.query(Point)
+                    .filter(Point.chore_id == chore_id, Point.user_id == user_id)
+                    .first()
+                )
                 if not existing_point:
                     point = Point(
                         user_id=user_id,
@@ -255,26 +275,28 @@ def complete_chore(
         # INDIVIDUAL CHORE: Toggle completion for current user only
         completed_ids = set()
         if chore.completed_by_ids:
-            completed_ids = set(int(x) for x in chore.completed_by_ids.split(",") if x.strip())
-        
+            completed_ids = set(
+                int(x) for x in chore.completed_by_ids.split(",") if x.strip()
+            )
+
         user_id = current_user.id
-        
+
         if user_id in completed_ids:
             # User is uncompleting their part
             completed_ids.discard(user_id)
             # Remove their points
             db.query(Point).filter(
-                Point.chore_id == chore_id,
-                Point.user_id == user_id
+                Point.chore_id == chore_id, Point.user_id == user_id
             ).delete()
         else:
             # User is completing their part
             completed_ids.add(user_id)
             # Award points to this user
-            existing_point = db.query(Point).filter(
-                Point.chore_id == chore_id,
-                Point.user_id == user_id
-            ).first()
+            existing_point = (
+                db.query(Point)
+                .filter(Point.chore_id == chore_id, Point.user_id == user_id)
+                .first()
+            )
             if not existing_point:
                 point = Point(
                     user_id=user_id,
@@ -283,16 +305,18 @@ def complete_chore(
                     awarded_at=datetime.utcnow(),
                 )
                 db.add(point)
-        
+
         # Update completed_by_ids
-        chore.completed_by_ids = ",".join(str(x) for x in sorted(completed_ids)) if completed_ids else None
-        
+        chore.completed_by_ids = (
+            ",".join(str(x) for x in sorted(completed_ids)) if completed_ids else None
+        )
+
         # Mark fully complete if all assignees have completed (or if unassigned)
         if assignee_ids:
             chore.completed = all(aid in completed_ids for aid in assignee_ids)
         else:
             chore.completed = len(completed_ids) > 0
-    
+
     db.commit()
     db.refresh(chore)
     return chore
@@ -304,7 +328,7 @@ def generate_ai_chores(
     family_id: int,
     week_start: date,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Dev mock: return a few suggested chores.

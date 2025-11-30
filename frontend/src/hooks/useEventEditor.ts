@@ -60,7 +60,9 @@ export function useEventEditor() {
   }, [editingId, title, startDate, endDate, startTime, endTime, location, participants]);
 
   const getEventIdFromSliceKey = useCallback((sliceKey: string): string => {
-    return sliceKey.split("-")[0];
+    // SliceKey format: "evt-{number}-{yyyy-MM-dd}"
+    // Remove the trailing date "-yyyy-MM-dd" to get "evt-{number}"
+    return sliceKey.replace(/-\d{4}-\d{2}-\d{2}$/, "");
   }, []);
 
   return {

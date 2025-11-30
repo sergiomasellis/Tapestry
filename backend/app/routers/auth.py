@@ -13,9 +13,17 @@ from ..config import settings
 from ..db.session import get_db
 from ..models.models import User, FamilyGroup, PasswordResetToken, QRCodeSession
 from ..schemas.schemas import (
-    Token, LoginRequest, AdminLoginRequest, SignupRequest, UserOut,
-    ForgotPasswordRequest, ResetPasswordRequest, Message,
-    QRCodeSessionResponse, QRCodeScanRequest, QRCodeStatusResponse
+    Token,
+    LoginRequest,
+    AdminLoginRequest,
+    SignupRequest,
+    UserOut,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+    Message,
+    QRCodeSessionResponse,
+    QRCodeScanRequest,
+    QRCodeStatusResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,7 +35,7 @@ security = HTTPBearer()
 # Password hashing - use bcrypt directly to avoid passlib initialization issues
 def _truncate_password(password: str) -> bytes:
     """Truncate password to 72 bytes (bcrypt limit)."""
-    password_bytes = password.encode('utf-8')
+    password_bytes = password.encode("utf-8")
     if len(password_bytes) > 72:
         return password_bytes[:72]
     return password_bytes
@@ -43,7 +51,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against a hash."""
     try:
         plain_bytes = _truncate_password(plain_password)
-        hashed_bytes = hashed_password.encode('utf-8')
+        hashed_bytes = hashed_password.encode("utf-8")
         return bcrypt.checkpw(plain_bytes, hashed_bytes)
     except Exception:
         return False
@@ -53,7 +61,7 @@ def get_password_hash(password: str) -> str:
     """Hash a password using bcrypt."""
     password_bytes = _truncate_password(password)
     salt = bcrypt.gensalt(rounds=12)
-    return bcrypt.hashpw(password_bytes, salt).decode('utf-8')
+    return bcrypt.hashpw(password_bytes, salt).decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -84,7 +92,7 @@ def decode_token(token: str) -> Optional[dict]:
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> User:
     """Get the current authenticated user from the token."""
     token = credentials.credentials
@@ -95,7 +103,7 @@ async def get_current_user(
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     user_id_str: Optional[str] = payload.get("sub")
     if user_id_str is None:
         raise HTTPException(
@@ -103,7 +111,7 @@ async def get_current_user(
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Convert string user_id back to integer
     try:
         user_id = int(user_id_str)
@@ -113,7 +121,7 @@ async def get_current_user(
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(
@@ -121,7 +129,7 @@ async def get_current_user(
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     return user
 
 
@@ -129,13 +137,14 @@ async def get_current_user(
 def signup(payload: SignupRequest, db: Session = Depends(get_db)):
     """Create a new user account."""
     # Check if email already exists
-    existing = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
+    existing = db.execute(
+        select(User).where(User.email == payload.email)
+    ).scalar_one_or_none()
     if existing:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
-    
+
     # Create new user
     user = User(
         name=payload.name,
@@ -148,7 +157,7 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    
+
     # Generate token
     access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token)
@@ -157,20 +166,20 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)):
 @router.post("/login", response_model=Token)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     """Login with email and password."""
-    user = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
+    user = db.execute(
+        select(User).where(User.email == payload.email)
+    ).scalar_one_or_none()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
-    
+
     # Verify password
     if not verify_password(payload.password, user.password_hash):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
-    
+
     # Generate token
     access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=access_token)
@@ -188,14 +197,13 @@ def admin_login(payload: AdminLoginRequest, db: Session = Depends(get_db)):
     fam = db.get(FamilyGroup, payload.family_id)
     if not fam:
         raise HTTPException(status_code=404, detail="Family not found")
-    
+
     # Verify admin password
     if not verify_password(payload.admin_password, fam.admin_password_hash):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid admin credentials"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin credentials"
         )
-    
+
     # Generate token with family admin subject
     access_token = create_access_token(data={"sub": f"family-admin:{fam.id}"})
     return Token(access_token=access_token)
@@ -204,29 +212,33 @@ def admin_login(payload: AdminLoginRequest, db: Session = Depends(get_db)):
 @router.post("/forgot-password", response_model=Message)
 def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
     """Request a password reset token for the given email."""
-    user = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
-    
+    user = db.execute(
+        select(User).where(User.email == payload.email)
+    ).scalar_one_or_none()
+
     # Always return success message to prevent email enumeration
     # In production, this would send an email with the reset link
     if user:
         # Generate a secure token
         token = secrets.token_urlsafe(32)
-        
+
         # Create reset token (expires in 1 hour)
         reset_token = PasswordResetToken(
             user_id=user.id,
             token=token,
             expires_at=datetime.utcnow() + timedelta(hours=1),
-            used=False
+            used=False,
         )
         db.add(reset_token)
         db.commit()
-        
+
         # In development, return the token in the response
         # In production, this would be sent via email
         logger.info(f"Password reset token generated for user {user.id}: {token}")
-    
-    return Message(message="If an account with that email exists, a password reset link has been sent.")
+
+    return Message(
+        message="If an account with that email exists, a password reset link has been sent."
+    )
 
 
 @router.post("/reset-password", response_model=Message)
@@ -238,46 +250,49 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
             and_(
                 PasswordResetToken.token == payload.token,
                 ~PasswordResetToken.used,
-                PasswordResetToken.expires_at > datetime.utcnow()
+                PasswordResetToken.expires_at > datetime.utcnow(),
             )
         )
     ).scalar_one_or_none()
-    
+
     if not reset_token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired reset token"
+            detail="Invalid or expired reset token",
         )
-    
+
     # Get the user
     user = db.get(User, reset_token.user_id)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
-    
+
     # Update password
     user.password_hash = get_password_hash(payload.new_password)
-    
+
     # Mark token as used
     reset_token.used = True
-    
+
     # Invalidate any other unused tokens for this user
-    other_tokens = db.execute(
-        select(PasswordResetToken).where(
-            and_(
-                PasswordResetToken.user_id == user.id,
-                ~PasswordResetToken.used,
-                PasswordResetToken.id != reset_token.id
+    other_tokens = (
+        db.execute(
+            select(PasswordResetToken).where(
+                and_(
+                    PasswordResetToken.user_id == user.id,
+                    ~PasswordResetToken.used,
+                    PasswordResetToken.id != reset_token.id,
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for token in other_tokens:
         token.used = True
-    
+
     db.commit()
-    
+
     return Message(message="Password has been reset successfully")
 
 
@@ -286,25 +301,25 @@ def generate_qr_code_session(db: Session = Depends(get_db)):
     """Generate a new QR code session for login."""
     # Generate a secure session token
     session_token = secrets.token_urlsafe(32)
-    
+
     # Create session (expires in 5 minutes)
     qr_session = QRCodeSession(
         session_token=session_token,
         expires_at=datetime.utcnow() + timedelta(minutes=5),
-        scanned=False
+        scanned=False,
     )
     db.add(qr_session)
     db.commit()
     db.refresh(qr_session)
-    
+
     # Construct QR code URL (deep link format for mobile app)
     # Format: tapestry://login?token=<session_token>
     qr_code_url = f"tapestry://login?token={session_token}"
-    
+
     return QRCodeSessionResponse(
         session_token=session_token,
         expires_at=qr_session.expires_at,
-        qr_code_url=qr_code_url
+        qr_code_url=qr_code_url,
     )
 
 
@@ -317,32 +332,31 @@ def scan_qr_code(payload: QRCodeScanRequest, db: Session = Depends(get_db)):
             and_(
                 QRCodeSession.session_token == payload.session_token,
                 ~QRCodeSession.scanned,
-                QRCodeSession.expires_at > datetime.utcnow()
+                QRCodeSession.expires_at > datetime.utcnow(),
             )
         )
     ).scalar_one_or_none()
-    
+
     if not qr_session:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired QR code session"
+            detail="Invalid or expired QR code session",
         )
-    
+
     # Verify user exists
     user = db.get(User, payload.user_id)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
-    
+
     # Mark session as scanned
     qr_session.scanned = True
     qr_session.scanned_at = datetime.utcnow()
     qr_session.user_id = payload.user_id
-    
+
     db.commit()
-    
+
     return Message(message="QR code scanned successfully")
 
 
@@ -352,18 +366,18 @@ def check_qr_code_status(session_token: str, db: Session = Depends(get_db)):
     qr_session = db.execute(
         select(QRCodeSession).where(QRCodeSession.session_token == session_token)
     ).scalar_one_or_none()
-    
+
     if not qr_session:
         return QRCodeStatusResponse(status="expired")
-    
+
     # Check if expired
     if qr_session.expires_at < datetime.utcnow():
         return QRCodeStatusResponse(status="expired")
-    
+
     # Check if scanned
     if qr_session.scanned and qr_session.user_id:
         # Generate auth token for the user
         access_token = create_access_token(data={"sub": str(qr_session.user_id)})
         return QRCodeStatusResponse(status="scanned", access_token=access_token)
-    
+
     return QRCodeStatusResponse(status="pending")

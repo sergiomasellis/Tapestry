@@ -14,33 +14,38 @@ router = APIRouter()
 
 @router.get("/", response_model=List[PointOut])
 def list_points(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """List points for the user's family. Requires authentication."""
     if not current_user.family_id:
         return []
     # Get points for users in the same family
-    family_users = db.execute(select(User.id).where(User.family_id == current_user.family_id)).scalars().all()
-    return db.execute(select(Point).where(Point.user_id.in_(family_users))).scalars().all()
+    family_users = (
+        db.execute(select(User.id).where(User.family_id == current_user.family_id))
+        .scalars()
+        .all()
+    )
+    return (
+        db.execute(select(Point).where(Point.user_id.in_(family_users))).scalars().all()
+    )
 
 
 @router.post("/", response_model=PointOut)
 def add_points(
     payload: PointCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Add points. Requires authentication and family membership."""
     # Basic validation
     user = db.get(User, payload.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Check if user belongs to the same family
     if user.family_id != current_user.family_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     if payload.chore_id:
         chore = db.get(Chore, payload.chore_id)
         if not chore:
@@ -63,8 +68,7 @@ def add_points(
 
 @router.get("/leaderboard", response_model=List[LeaderboardEntry])
 def get_leaderboard(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """
     Get leaderboard with users' total points and completed chores.
@@ -73,7 +77,7 @@ def get_leaderboard(
     """
     if not current_user.family_id:
         return []
-    
+
     # Get all users in the same family with their total points
     users_with_points = (
         db.query(

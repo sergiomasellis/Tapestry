@@ -24,9 +24,7 @@ from .logging_config import setup_logging, get_request_id  # noqa: E402
 
 # Setup logging
 logger = setup_logging(
-    level=settings.log_level,
-    log_format=settings.log_format,
-    app_name="tapestry"
+    level=settings.log_level, log_format=settings.log_format, app_name="tapestry"
 )
 
 # Import middleware
@@ -59,15 +57,15 @@ async def lifespan(app: FastAPI):
             "environment": settings.environment,
             "version": settings.app_version,
             "database": "sqlite" if settings.is_sqlite else "postgresql",
-        }
+        },
     )
-    
+
     # Create database tables
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created/verified")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Application shutting down")
 
@@ -95,14 +93,14 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         extra={
             "client_host": request.client.host if request.client else "unknown",
             "path": str(request.url.path),
-        }
+        },
     )
     return JSONResponse(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         content={
             "detail": "Rate limit exceeded. Please try again later.",
             "request_id": get_request_id(),
-        }
+        },
     )
 
 
@@ -114,14 +112,14 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         extra={
             "status_code": exc.status_code,
             "path": str(request.url.path),
-        }
+        },
     )
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "detail": exc.detail,
             "request_id": get_request_id(),
-        }
+        },
     )
 
 
@@ -133,14 +131,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         extra={
             "errors": exc.errors(),
             "path": str(request.url.path),
-        }
+        },
     )
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
             "detail": exc.errors(),
             "request_id": get_request_id(),
-        }
+        },
     )
 
 
@@ -153,14 +151,14 @@ async def general_exception_handler(request: Request, exc: Exception):
         extra={
             "path": str(request.url.path),
             "exception_type": type(exc).__name__,
-        }
+        },
     )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "detail": "Internal server error",
             "request_id": get_request_id(),
-        }
+        },
     )
 
 
@@ -233,5 +231,5 @@ logger.info(
         "cors_origins": settings.cors_origins_list,
         "rate_limit_enabled": settings.rate_limit_enabled,
         "security_headers_enabled": settings.enable_security_headers,
-    }
+    },
 )

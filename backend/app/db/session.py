@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class Base(DeclarativeBase):
     """Base class for SQLAlchemy models."""
+
     pass
 
 
@@ -24,7 +25,7 @@ def create_database_engine():
     Uses different settings for SQLite vs PostgreSQL.
     """
     database_url = settings.database_url
-    
+
     if settings.is_sqlite:
         # SQLite configuration (development)
         logger.info("Using SQLite database")
@@ -34,7 +35,7 @@ def create_database_engine():
             connect_args={"check_same_thread": False},
             poolclass=StaticPool,  # SQLite works best with StaticPool
         )
-        
+
         # Enable foreign keys for SQLite
         @event.listens_for(engine, "connect")
         def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -48,7 +49,7 @@ def create_database_engine():
             extra={
                 "pool_size": settings.db_pool_size,
                 "max_overflow": settings.db_max_overflow,
-            }
+            },
         )
         engine = create_engine(
             database_url,
@@ -57,9 +58,9 @@ def create_database_engine():
             pool_size=settings.db_pool_size,
             max_overflow=settings.db_max_overflow,
             pool_pre_ping=True,  # Verify connections before use
-            pool_recycle=3600,   # Recycle connections after 1 hour
+            pool_recycle=3600,  # Recycle connections after 1 hour
         )
-    
+
     return engine
 
 

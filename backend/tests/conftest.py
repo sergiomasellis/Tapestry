@@ -24,8 +24,7 @@ from app.db.session import Base, get_db
 # Create test database engine
 SQLALCHEMY_TEST_DATABASE_URL = "sqlite:///./test.db"
 test_engine = create_engine(
-    SQLALCHEMY_TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    SQLALCHEMY_TEST_DATABASE_URL, connect_args={"check_same_thread": False}
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
@@ -57,9 +56,9 @@ def db_session() -> Generator:
     connection = test_engine.connect()
     transaction = connection.begin()
     session = TestingSessionLocal(bind=connection)
-    
+
     yield session
-    
+
     session.close()
     transaction.rollback()
     connection.close()
@@ -68,17 +67,18 @@ def db_session() -> Generator:
 @pytest.fixture(scope="function")
 def client(db_session) -> Generator:
     """Provide a test client with database session override."""
+
     def override_get_db_fixture():
         try:
             yield db_session
         finally:
             pass
-    
+
     app.dependency_overrides[get_db] = override_get_db_fixture
-    
+
     with TestClient(app) as test_client:
         yield test_client
-    
+
     app.dependency_overrides.clear()
 
 
@@ -89,7 +89,7 @@ def test_user_data():
         "name": "Test User",
         "email": "test@example.com",
         "password": "testpassword123",
-        "role": "parent"
+        "role": "parent",
     }
 
 
@@ -100,11 +100,13 @@ def auth_headers(client, test_user_data):
     response = client.post("/api/auth/signup", json=test_user_data)
     if response.status_code == 400:
         # User might already exist, try login
-        response = client.post("/api/auth/login", json={
-            "email": test_user_data["email"],
-            "password": test_user_data["password"]
-        })
-    
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "email": test_user_data["email"],
+                "password": test_user_data["password"],
+            },
+        )
+
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
-
